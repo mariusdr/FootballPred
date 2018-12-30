@@ -14,6 +14,27 @@ class SeasonTag(Enum):
     S13_14 = auto()
     S14_15 = auto()
     S15_16 = auto()
+    
+    @staticmethod
+    def as_year(val):
+        if val == SeasonTag.S08_09:
+            return "2008"
+        elif val == SeasonTag.S09_10:
+            return "2009"
+        elif val == SeasonTag.S10_11:
+            return "2010"
+        elif val == SeasonTag.S11_12:
+            return "2011"
+        elif val == SeasonTag.S12_13:
+            return "2012"
+        elif val == SeasonTag.S13_14:
+            return "2013"
+        elif val == SeasonTag.S14_15:
+            return "2014"
+        elif val == SeasonTag.S15_16:
+            return "2015"
+        else: 
+            raise ValueError("{} not a valid SeasonTag".format(val))
 
     @staticmethod
     def as_str(val):
@@ -178,9 +199,64 @@ def query_matches(sql_conn, league_tag, season_tag):
     
     return matches_df
 
+def query_all_players(sql_conn):
+     qstr = """
+        SELECT date, a.player_fifa_api_id, 
+               a.player_api_id, 
+               player_name, 
+               overall_rating, 
+               potential, 
+               attacking_work_rate, 
+               defensive_work_rate, 
+               crossing, 
+               finishing, 
+               heading_accuracy, 
+               short_passing, 
+               volleys, 
+               dribbling, 
+               curve, 
+               free_kick_accuracy, 
+               long_passing, 
+               ball_control, 
+               acceleration, 
+               sprint_speed, 
+               agility, 
+               reactions, 
+               balance, 
+               shot_power, 
+               jumping, 
+               stamina, 
+               strength, 
+               long_shots, 
+               aggression, 
+               interceptions, 
+               positioning, 
+               vision, 
+               penalties, 
+               marking, 
+               standing_tackle, 
+               sliding_tackle, 
+               gk_diving, 
+               gk_handling, 
+               gk_kicking, 
+               gk_positioning, 
+               gk_reflexes, 
+               birthday
+        FROM Player_Attributes a
+        LEFT JOIN Player t
+        WHERE t.player_api_id = a.player_api_id
+    """
 
+     player_df = pd.read_sql_query(qstr, sql_conn)
+     logging.info("got {} rows from db".format(player_df.shape[0])) 
+     #logging.debug("no. of null values {} in player table".format(player_df.isnull().sum()))
 
-def query_player(sql_conn, player_id):
+     # convert the strings in column 'date' to pandas TimeStamp objects
+     player_df["date"] = pd.to_datetime(player_df["date"], format='%Y-%m-%d %H:%M:%S.%f')
+
+     return player_df
+
+def query_player(sql_conn, player_id, match_time):
     qstr = """
         SELECT date, a.player_fifa_api_id, 
                a.player_api_id, 
@@ -235,13 +311,15 @@ def query_player(sql_conn, player_id):
     # convert the strings in column 'date' to pandas TimeStamp objects
     player_df["date"] = pd.to_datetime(player_df["date"], format='%Y-%m-%d %H:%M:%S.%f')
 
-    return player_df
+    return min(player_df.iterrows(), key=lambda t : time_diff(t[1]["date"], match_time))
 
+def time_diff(field, reference):
+    return abs(pd.Timedelta(field - reference).total_seconds())
 
-def query_multiple_players(sql_conn, player_ids):
+def query_multiple_players(sql_conn, player_ids, match_time):
     team_dict = {}
     for player_id in player_ids:
-        player_df = query_player(sql_conn, player_id)
+        player_df = query_player(sql_conn, player_id, match_time)
         team_dict[player_id] = player_df
     return team_dict
 
