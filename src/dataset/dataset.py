@@ -81,14 +81,14 @@ class SingleSeasonSingleLeague(data.Dataset):
             team_home = min(
                 team_home.iterrows(),
                 key=lambda t: self.time_diff(t[1]["date"], match_time))
-        elif USE_TEAM_PADDING:
+        elif self.USE_TEAM_PADDING:
             team_home = [None, None]
         
         if (team_away.size > 0):
             team_away = min(
                 team_away.iterrows(),
                 key=lambda t: self.time_diff(t[1]["date"], match_time))
-        elif USE_TEAM_PADDING:
+        elif self.USE_TEAM_PADDING:
              team_away = [None, None]
 
         encoded_team_away = self.encode_team(team_away[1])
