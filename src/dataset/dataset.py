@@ -151,7 +151,7 @@ class SingleSeasonSingleLeague(data.Dataset):
             if p is not None:
                 team_dict[player_id] = p
             elif self.USE_PLAYER_PADDING:
-                team_dict[player_id] = [None, None] # necessary because the player vars arr arrays
+                team_dict[player_id] = [None, None] # necessary because the player vars are arrays
         return team_dict
 
     def select_player(self, player_id, match_time, players):
@@ -181,7 +181,7 @@ class SingleSeasonSingleLeague(data.Dataset):
 		
         t = []
         if (player is None):
-            t =  torch.zeros([35], dtype=torch.int32)
+            t =  torch.zeros([35], dtype=torch.float32)
         else:
             t = torch.tensor(player[cols].astype("float32").values)
             t[torch.isnan(t)] = 0.0
