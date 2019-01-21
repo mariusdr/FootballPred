@@ -21,6 +21,7 @@ class SingleSeasonSingleLeague(data.Dataset):
     """
     Holds all matches of given season of a given league ordered by match dates.
     """
+    USE_PLAYER_PADDING = False
 
     def __init__(self, sqpath, league_tag, season_tag):
         'Initialization'
@@ -149,6 +150,8 @@ class SingleSeasonSingleLeague(data.Dataset):
             p = self.select_player(player_id, match_time, players)
             if p is not None:
                 team_dict[player_id] = p
+            elif self.USE_PLAYER_PADDING:
+                team_dict[player_id] = [None, None] # necessary because the player vars arr arrays
         return team_dict
 
     def select_player(self, player_id, match_time, players):
@@ -175,8 +178,14 @@ class SingleSeasonSingleLeague(data.Dataset):
             "sliding_tackle", "gk_diving", "gk_handling", "gk_kicking",
             "gk_positioning", "gk_reflexes"
         ]
-        t = torch.tensor(player[cols].astype("float32").values)
-        t[torch.isnan(t)] = 0.0
+		
+        t = []
+        if (player is None):
+            t =  torch.zeros([35], dtype=torch.int32)
+        else:
+            t = torch.tensor(player[cols].astype("float32").values)
+            t[torch.isnan(t)] = 0.0
+        
         return t
 
     def encode_team(self, team):
