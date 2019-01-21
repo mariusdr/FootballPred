@@ -175,6 +175,7 @@ def query_matches(sql_conn, league_tag, season_tag):
         INNER JOIN Team AS Team1 ON Team1.team_api_id = Match.away_team_api_id 
         INNER JOIN Team AS Team2 ON Team2.team_api_id = Match.home_team_api_id 
         WHERE league_id = {} AND season = '{}' 
+        ORDER BY date
     """.format(lid, sstr)
     
     matches_df = pd.read_sql_query(qstr, sql_conn)
@@ -198,6 +199,7 @@ def query_matches(sql_conn, league_tag, season_tag):
     ))
     
     return matches_df
+
 
 def query_all_players(sql_conn):
      qstr = """
