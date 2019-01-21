@@ -21,7 +21,8 @@ class SingleSeasonSingleLeague(data.Dataset):
     """
     Holds all matches of given season of a given league ordered by match dates.
     """
-    USE_PLAYER_PADDING = False
+    USE_PLAYER_PADDING = True
+    USE_TEAM_PADDING = True
 
     def __init__(self, sqpath, league_tag, season_tag):
         'Initialization'
@@ -76,12 +77,19 @@ class SingleSeasonSingleLeague(data.Dataset):
         team_away = teams.loc[teams['team_api_id'] ==
                               match["away_team_api_id"]]
 
-        team_home = min(
-            team_home.iterrows(),
-            key=lambda t: self.time_diff(t[1]["date"], match_time))
-        team_away = min(
-            team_away.iterrows(),
-            key=lambda t: self.time_diff(t[1]["date"], match_time))
+        if (team_home.size > 0):
+            team_home = min(
+                team_home.iterrows(),
+                key=lambda t: self.time_diff(t[1]["date"], match_time))
+        elif USE_TEAM_PADDING:
+            team_home = [None, None]
+        
+        if (team_away.size > 0):
+            team_away = min(
+                team_away.iterrows(),
+                key=lambda t: self.time_diff(t[1]["date"], match_time))
+        elif USE_TEAM_PADDING:
+             team_away = [None, None]
 
         encoded_team_away = self.encode_team(team_away[1])
         encoded_team_home = self.encode_team(team_home[1])
@@ -199,8 +207,13 @@ class SingleSeasonSingleLeague(data.Dataset):
             "defenceAggression",
             "defenceTeamWidth"
         ]
-        t = torch.tensor(team[cols].astype("float32").values)
-        t[torch.isnan(t)] = 0.0
+        
+        t = []
+        if (team is not None):
+            t = torch.tensor(team[cols].astype("float32").values)
+            t[torch.isnan(t)] = 0.0
+        else:
+            t = torch.zeros([8], dtype=torch.float32)
         return t
 
     # help functions
