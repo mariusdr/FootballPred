@@ -83,12 +83,12 @@ class DensePredictionNet(nn.Module):
         self.input_size = input_size
         
         # shared layers
-        self.shared1 = nn.Linear(input_size, 1024)
-        self.shared2 = nn.Linear(1024, 512)
+        self.shared1 = nn.Linear(input_size, 128)
+        self.shared2 = nn.Linear(128, 64)
 
         # prediction 
-        self.fc1 = nn.Linear(1024, 128)
-        self.fc2 = nn.Linear(128, 3)
+        self.fc1 = nn.Linear(128, 64)
+        self.fc2 = nn.Linear(64, 3)
 
     def forward(self, x1, x2):
         x1 = F.relu(self.shared1(x1))
@@ -96,8 +96,9 @@ class DensePredictionNet(nn.Module):
 
         x2 = F.relu(self.shared1(x2))
         x2 = F.relu(self.shared2(x2))
-
         y = torch.cat((x1, x2), 1)
+
         y = F.relu(self.fc1(y))
         y = F.softmax(self.fc2(y), dim=1)
+        return y
 

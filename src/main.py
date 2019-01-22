@@ -47,7 +47,7 @@ args = parser.parse_args()
 def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loader, batch_size, epoch_number):
     running_loss = 0.0
     running_loss_saved = list()
-    steps = 1  # print loss every k steps
+    steps = 15  # print loss every k steps
 
     for i, (match, result) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -64,14 +64,12 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
         for x in players_away:
             x = x.to(device=device)
         
-        
         players_home_tensor = torch.stack(players_home, dim=1)
         players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
-
-        players_away_tensor = torch.stack(players_away, dim=1).view(players_away_tensor.shape[0], -1)
+    
+        players_away_tensor = torch.stack(players_away, dim=1)
         players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1) 
-
-
+    
         pred_result = model(players_home_tensor, players_away_tensor)
 
         if batch_size == 1:
@@ -84,7 +82,7 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
 
         running_loss += error.item()
 
-        if i > 0 and i % steps == 0:
+        if i % steps == 0:
             running_loss = running_loss / steps
             running_loss_saved.append(running_loss)
             logging.info("epoch {} | step {} | running loss {}".format(epoch_number, i, running_loss))
@@ -110,8 +108,9 @@ def validate(model, optimizer, loss_fn, device, valid_loader):
             players_home_tensor = torch.stack(players_home, dim=1)
             players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
 
-            players_away_tensor = torch.stack(players_away, dim=1).view(players_away_tensor.shape[0], -1)
+            players_away_tensor = torch.stack(players_away, dim=1)
             players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1) 
+
 
             pred_result = model(players_home_tensor, players_away_tensor)
 
