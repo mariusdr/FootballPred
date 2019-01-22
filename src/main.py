@@ -66,10 +66,12 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
         
         players_home_tensor = torch.stack(players_home, dim=1)
         players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
-    
+        players_home_tensor = players_home_tensor.to(device=device) 
+
         players_away_tensor = torch.stack(players_away, dim=1)
         players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1) 
-    
+        players_away_tensor = players_away_tensor.to(device=device) 
+
         pred_result = model(players_home_tensor, players_away_tensor)
 
         if batch_size == 1:
@@ -107,10 +109,11 @@ def validate(model, optimizer, loss_fn, device, valid_loader):
 
             players_home_tensor = torch.stack(players_home, dim=1)
             players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
+            players_home_tensor = players_home_tensor.to(device=device) 
 
             players_away_tensor = torch.stack(players_away, dim=1)
             players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1) 
-
+            players_away_tensor = players_away_tensor.to(device=device) 
 
             pred_result = model(players_home_tensor, players_away_tensor)
 
