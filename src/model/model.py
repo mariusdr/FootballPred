@@ -57,7 +57,7 @@ class SiamesePredictionNet(nn.Module):
             input_size=input_size,
             hidden_size=hidden_size,
             num_hidden_layers=num_hidden_layers)
-        self.fc1 = nn.Linear(128, 1, bias=True)
+        self.fc1 = nn.Linear(hidden_size, 3, bias=True)
 
 
     def forward(self, inp1, inp2):
@@ -65,24 +65,13 @@ class SiamesePredictionNet(nn.Module):
         hidden2 = self.encoder.init_hidden()
 
         for x1 in inp1:
-            x1 = torch.unsqueeze(x1, 0)
             y1, hidden1 = self.encoder(x1, hidden1)
 
         for x2 in inp2:
-            x2 = torch.unsqueeze(x2, 0)
             y2, hidden2 = self.encoder(x2, hidden2)
+        
+        
+        outp = torch.abs(y1 - y2)
+        return F.softmax(self.fc1(outp))
 
 
-        y1 = torch.squeeze(y1, dim=0)
-        y2 = torch.squeeze(y2, dim=0)
-
-        p1 = F.relu(y1 - y2)
-        p2 = F.relu(y2 - y1)
-        pd = F.relu(y1 - y2) - F.relu(y2 - y1)
-
-        p1 = self.fc1(p1)
-        p2 = self.fc1(p2)
-        pd = self.fc1(pd)
-
-        outp = torch.cat((p1, p2, pd), dim=1)
-        return F.softmax(outp)

@@ -7,7 +7,6 @@ from torch.optim import Adam, SGD
 
 from dataset.db_query import LeagueTag, SeasonTag
 from dataset.dataset import SingleSeasonSingleLeague
-from model.train import train, get_device
 from model.model import TeamEncoder, SiamesePredictionNet
 from dataset.train_valid_test_loader import make_small_test_set, make_small_train_set, make_small_valid_set
 from dataset.train_valid_test_loader import make_test_set, make_train_set, make_valid_set
@@ -20,12 +19,12 @@ parser.add_argument("--database", type=str, help="path to the training database"
 parser.add_argument("--log", type=str, default=None, help="path to logfile ")
 parser.add_argument("--loglevel", type=str, default="INFO", help="log level, either DEBUG or INFO")
 parser.add_argument("--device", type=str, help="cuda or cpu", default="cpu")
-parser.add_argument("--big_dataset", type=bool, help="use the full dataset for this run", default=True)
+parser.add_argument("--big_dataset", type=int, help="use the full dataset for this run", default=1)
 
 # model hyperparameters
 parser.add_argument("--lstm_hidden_size", type=int, help="num. of neurons in the hidden layers of the LSTM encoder", default=128)
 parser.add_argument("--lstm_hidden_layers", type=int, help="num. of hidden layers in the LSTM encoder", default=1)
-parser.add_arugment("--bidirectional", type=bool, help="use bidirectional LSTM", default=False)
+parser.add_argument("--bidirectional", type=bool, help="use bidirectional LSTM", default=False)
 
 # training hyperparameters
 parser.add_argument("--epochs", type=int, help="num. of training epochs")
@@ -45,35 +44,82 @@ args = parser.parse_args()
 
 def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loader, batch_size, epoch_number):
     running_loss = 0.0
+    running_loss_saved = list()
+    steps = 50  # print loss every k steps
 
     for i, (match, result) in enumerate(train_loader):
         optimizer.zero_grad()
 
-        players_home = match_dict["players_home"]
-        players_away = match_dict["players_away"]
+        players_home = match["players_home"]
+        players_away = match["players_away"]
+
+        if batch_size == 1:
+            players_home = map(lambda x: torch.unsqueeze(x, 0), players_home)
+            players_away = map(lambda x: torch.unsqueeze(x, 0), players_away)
+
+        # send player vectors to device
+        players_home = map(lambda x: x.to(device=device), players_home)
+        players_away = map(lambda x: x.to(device=device), players_away)
 
         pred_result = model(players_home, players_away)
-        
-        result = result.to(dtype=torch.float32)
+        pred_result = torch.squeeze(pred_result, 0)  # remove sequence idx 
+
         if batch_size == 1:
             result = torch.unsqueeze(result, 0)
-
-        error = loss_fn(pred_result,
-                        torch.unsqueeze(result.to(dtype=torch.float32), 0))
+        result = result.to(dtype=torch.float32, device=device)
+    
+        error = loss_fn(pred_result, result)
         error.backward()
-
         optimizer.step()
 
         running_loss += error.item()
 
-        if i > 0 and i % 150 == 0:
-            print("epoch {} | step {} | running loss {}".format(epoch_number, i, running_loss / 150))
+        if i > 0 and i % steps == 0:
+            running_loss = running_loss / steps
+            running_loss_saved.append(running_loss)
+            logging.info("epoch {} | step {} | running loss {}".format(epoch_number, i, running_loss))
             running_loss = 0.0
+
+
+def validate(model, optimizer, loss_fn, device, valid_loader):
+    losses = list()
+    with torch.no_grad():
+        for i, (match, result) in enumerate(valid_loader):
+            players_home = match["players_home"]
+            players_away = match["players_away"]
+
+            players_home = map(lambda x: torch.unsqueeze(x, 0), players_home)
+            players_away = map(lambda x: torch.unsqueeze(x, 0), players_away)
+
+            # send player vectors to device
+            players_home = map(lambda x: x.to(device=device), players_home)
+            players_away = map(lambda x: x.to(device=device), players_away)
+
+            pred_result = model(players_home, players_away)
+            pred_result = torch.squeeze(pred_result, 0)  # remove sequence idx 
+
+            result = torch.unsqueeze(result, 0)
+            result = result.to(dtype=torch.float32, device=device)
+
+            error = loss_fn(pred_result, result)
+            losses.append(error.item())
+
+    return losses 
+
 
 def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loader, batch_size):
     for epoch in range(num_epochs):
         model.train()
         train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loader, batch_size, epoch)
+
+        model.eval()
+        losses = validate(model, optimizer, loss_fn, device, valid_loader)
+
+        avg_loss = float(sum(losses)) / float(len(losses))
+
+        logging.info(
+            "epoch {} | average validation loss {}"
+            .format(epoch, avg_loss))
 
 def get_device(use_cuda):
     if use_cuda and torch.cuda.is_available():
@@ -87,22 +133,26 @@ def get_device(use_cuda):
 
 def run_training():
     sql_path = args.database
-    if args.big_dataset:
+    if bool(args.big_dataset):
         train_set = make_train_set(sql_path)
         valid_set = make_valid_set(sql_path)
     else:
         train_set = make_small_train_set(sql_path)
         valid_set = make_small_valid_set(sql_path)
 
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=args.shuffle)
-    valid_loader = DataLoader(valid_set, batch_size=args.batch_size, shuffle=args.shuffle)
+    train_loader = DataLoader(
+        train_set, batch_size=args.batch_size, shuffle=args.shuffle)
+    valid_loader = DataLoader(valid_set, batch_size=1, shuffle=False)
 
     if args.device == "cuda":
         device = get_device(use_cuda=True)
     else:
         device = get_device(use_cuda=False)
 
-    model = SiamesePredictionNet(35, args.hidden_size, args.num_hidden_layers)
+    model = SiamesePredictionNet(
+        35,
+        hidden_size=args.lstm_hidden_size,
+        num_hidden_layers=args.lstm_hidden_layers)
     model.to(device)
 
     if args.optimizer == "Adam":

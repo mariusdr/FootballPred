@@ -46,4 +46,5 @@ NESTEROV=0
 # run
 EXEC=$PROJECT_ROOT/src/main.py
 
-python3 $EXEC --database $PATH_DB --log $PATH_LOGFILE --epochs $EPOCHS --batch_size $BATCH_SIZE --shuffle $SHUFFLE --model_save_path $PATH_SAVED_MODELS --stats_save_path $PATH_SAVED_STATS --optimizer $OPTIMIZER --learning_rate $LEARNING_RATE --weight_decay $WEIGHT_DECAY --lstm_hidden_size $HIDDEN_SIZE --lstm_hidden_layers $HIDDEN_LAYERS --bidirectional $BIDIRECTIONAL --momentum $MOMENTUM --nesterov $NESTEROV
+python3 $EXEC --database $PATH_DB --log $PATH_LOGFILE --epochs $EPOCHS --batch_size $BATCH_SIZE --shuffle $SHUFFLE --model_save_path $PATH_SAVED_MODELS --stats_save_path $PATH_SAVED_STATS --optimizer $OPTIMIZER --learning_rate $LEARNING_RATE --weight_decay $WEIGHT_DECAY --lstm_hidden_size $HIDDEN_SIZE --lstm_hidden_layers $HIDDEN_LAYERS --bidirectional $BIDIRECTIONAL --momentum $MOMENTUM --nesterov $NESTEROV --big_dataset $BIG_DATASET
+

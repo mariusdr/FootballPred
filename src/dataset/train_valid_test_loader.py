@@ -111,11 +111,9 @@ TEST_SEASONS = [(LeagueTag.FRA, SeasonTag.S09_10),
                 (LeagueTag.FRA, SeasonTag.S10_11),
                 (LeagueTag.POR, SeasonTag.S13_14)]
 
-SMALL_TRAIN_SEASONS = [(LeagueTag.NET, SeasonTag.S14_15),
-                       (LeagueTag.SPA, SeasonTag.S08_09)]
+SMALL_TRAIN_SEASONS = [(LeagueTag.NET, SeasonTag.S14_15)]
 
-SMALL_VALID_SEASONS = [(LeagueTag.SCO, SeasonTag.S13_14),
-                       (LeagueTag.SWI, SeasonTag.S10_11)]
+SMALL_VALID_SEASONS = [(LeagueTag.SCO, SeasonTag.S13_14)]
 
 SMALL_TEST_SEASONS = [(LeagueTag.FRA, SeasonTag.S09_10)]
 
