@@ -12,6 +12,7 @@ import itertools
 import sqlite3
 import logging
 import time
+import math
 
 from dataset.db_query import query_all_players, query_matches, query_teams, get_player_ids_from_match
 from dataset.util import MatchCaches
@@ -23,6 +24,8 @@ class SingleSeasonSingleLeague(data.Dataset):
     """
     USE_PLAYER_PADDING = True
     USE_TEAM_PADDING = True
+    PLAYER_CACHE = dict()
+    TEAM_CACHE = dict()
 
     def __init__(self, sqpath, league_tag, season_tag):
         'Initialization'
@@ -39,6 +42,10 @@ class SingleSeasonSingleLeague(data.Dataset):
             players = query_all_players(conn)
             matches = query_matches(conn, self.league, self.season)
         sqlload_end = time.time()
+		
+        # Group players
+        players.set_index("player_api_id", inplace=True)
+        teams.set_index("team_api_id", inplace=True)
 
         logging.debug(
             "time for loading sql data {}".format(sqlload_end - sqlload_start))
@@ -72,28 +79,11 @@ class SingleSeasonSingleLeague(data.Dataset):
         match_time = match["date"]
 
         # get teams
-        team_home = teams.loc[teams['team_api_id'] ==
-                              match["home_team_api_id"]]
-        team_away = teams.loc[teams['team_api_id'] ==
-                              match["away_team_api_id"]]
-
-        if (team_home.size > 0):
-            team_home = min(
-                team_home.iterrows(),
-                key=lambda t: self.time_diff(t[1]["date"], match_time))
-        elif self.USE_TEAM_PADDING:
-            team_home = [None, None]
-        
-        if (team_away.size > 0):
-            team_away = min(
-                team_away.iterrows(),
-                key=lambda t: self.time_diff(t[1]["date"], match_time))
-        elif self.USE_TEAM_PADDING:
-             team_away = [None, None]
+        team_home = self.select_team(match["home_team_api_id"], match_time, teams)
+        team_away = self.select_team(match["away_team_api_id"], match_time, teams)
 
         encoded_team_away = self.encode_team(team_away[1])
         encoded_team_home = self.encode_team(team_home[1])
-
 
         # get players
         players_home = self.select_players(player_ids[1], match_time, players)
@@ -151,6 +141,31 @@ class SingleSeasonSingleLeague(data.Dataset):
     # wins += 1
 
     # return self.one_hot_value_int(wins, 0, count * 2)
+	
+    def select_team(self, team_id, match_time, teams):
+        if (math.isnan(team_id)):
+            return [None, None]
+        if (team_id in self.TEAM_CACHE):
+            return self.TEAM_CACHE[team_id]
+        if (team_id not in teams.index):
+            return [None, None]		
+        
+        team = teams.loc[team_id]
+        sel_team = None
+		
+        if isinstance(team, pd.Series):
+            self.TEAM_CACHE[team_id] = [None, team]
+            return self.TEAM_CACHE[team_id]
+		
+        if (team.size > 0):
+            sel_team = min(
+                team.iterrows(),
+                key=lambda t: self.time_diff(t[1]["date"], match_time))
+            self.TEAM_CACHE[team_id] = sel_team
+        elif self.USE_TEAM_PADDING:
+            sel_team = [None, None]
+			
+        return sel_team
 
     def select_players(self, player_ids, match_time, players):
         team_dict = {}
@@ -163,15 +178,22 @@ class SingleSeasonSingleLeague(data.Dataset):
         return team_dict
 
     def select_player(self, player_id, match_time, players):
-        res = players.loc[players['player_api_id'] == player_id]
+        if (math.isnan(player_id)):
+            return None
+        if (player_id in self.PLAYER_CACHE):
+            return self.PLAYER_CACHE[player_id]
+			
+        res = players.loc[player_id]
 
         if len(res) == 0:
             logging.debug("player with id {} could not be found in players table".format(player_id))
             return None
 
-        return min(
+        sel_player = min(
             res.iterrows(),
             key=lambda t: self.time_diff(t[1]["date"], match_time))
+        self.PLAYER_CACHE[player_id] = sel_player
+        return sel_player
 
     def encode_player(self, player):
         # zero_to_hundred_values = ["overall_rating", "potential"]
