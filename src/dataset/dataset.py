@@ -17,16 +17,30 @@ import math
 from dataset.db_query import query_all_players, query_matches, query_teams, get_player_ids_from_match
 from dataset.util import MatchCaches
 
+"""
 
+Loads the data for a given season and a given league (using pytorch dataset mechanism).
+
+Queues all needed data from the SQL database and handles wrong field values.
+Also uses caching mechanisms and dataframe indices to provide a better performance.
+
+"""
 class SingleSeasonSingleLeague(data.Dataset):
     """
     Holds all matches of given season of a given league ordered by match dates.
     """
+	
+	# Determines whether we use a padding for players/teams that could not be found
     USE_PLAYER_PADDING = True
     USE_TEAM_PADDING = True
+	
+	# Caching directories, in our case this caching is much faster than access over dataframe index
     PLAYER_CACHE = dict()
     TEAM_CACHE = dict()
-
+	
+    """
+    Initializes the dataset by queuing the SQL database given by sqpath.
+    """
     def __init__(self, sqpath, league_tag, season_tag):
         'Initialization'
         self.league = league_tag
@@ -62,14 +76,19 @@ class SingleSeasonSingleLeague(data.Dataset):
         process_end = time.time()
         logging.debug(
             "time for processing data {}".format(process_end - process_start))
-
+	
+	# Simply the number of the samples
     def __len__(self):
         'Denotes the total number of samples'
         return self.length
 
+    # Gets a single item with a given index.
     def __getitem__(self, index):
         return self.samples[index]
-
+		
+    """
+    Generates a single sample with a given index and needs the teams, players and matches dataframes.
+    """
     def _generate_sample(self, index, teams, players, matches):
         # Select sample
         match = matches.loc[index]
@@ -142,6 +161,12 @@ class SingleSeasonSingleLeague(data.Dataset):
 
     # return self.one_hot_value_int(wins, 0, count * 2)
 	
+    """
+	Selects a team with a given id (team_id) from a dataframe (teams).
+    Uses internal caching to avoid a lot of searches against the dataframe.
+    
+    If there are multiple matches it selects the one which is the closest to the given match time.
+    """
     def select_team(self, team_id, match_time, teams):
         if (math.isnan(team_id)):
             return [None, None]
@@ -166,7 +191,13 @@ class SingleSeasonSingleLeague(data.Dataset):
             sel_team = [None, None]
 			
         return sel_team
-
+		
+    """
+	Selects a set of players with given ids (player_ids) from a dataframe (players).
+	Also uses internal caching to avoid a lot of searches against the dataframe.
+	
+	If there are multiple matches it selects the one which is the closest to the given match time.
+    """
     def select_players(self, player_ids, match_time, players):
         team_dict = {}
         for player_id in player_ids:
@@ -176,7 +207,11 @@ class SingleSeasonSingleLeague(data.Dataset):
             elif self.USE_PLAYER_PADDING:
                 team_dict[player_id] = [None, None] # necessary because the player vars are arrays
         return team_dict
-
+		
+    """
+	Selects a single player with a given id from a dataframe.
+	Also uses internal caching to avoid a lot of searches against the dataframe.
+    """
     def select_player(self, player_id, match_time, players):
         if (math.isnan(player_id)):
             return None
@@ -194,7 +229,10 @@ class SingleSeasonSingleLeague(data.Dataset):
             key=lambda t: self.time_diff(t[1]["date"], match_time))
         self.PLAYER_CACHE[player_id] = sel_player
         return sel_player
-
+	
+    """
+	Encodes a single player to a pytorch tensor.
+    """
     def encode_player(self, player):
         # zero_to_hundred_values = ["overall_rating", "potential"]
         cols = [
@@ -218,6 +256,9 @@ class SingleSeasonSingleLeague(data.Dataset):
         
         return t
 
+    """
+	Encodes a single team to a pytorch tensor.
+    """
     def encode_team(self, team):
         cols = [
             "buildUpPlaySpeed",
