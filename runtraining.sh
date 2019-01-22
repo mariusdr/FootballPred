@@ -30,9 +30,8 @@ HIDDEN_LAYERS=4
 BIDIRECTIONAL=0
 
 # hyperparameters for training
-EPOCHS=25
-BATCH_SIZE=1
-SHUFFLE=0
+EPOCHS=250
+BATCH_SIZE=8
 
 OPTIMIZER="Adam"
 LEARNING_RATE=0.001
@@ -40,11 +39,10 @@ WEIGHT_DECAY=0.0
 
 #OPTIMIZER="SGD"
 #LEARNING_RATE=0.01
-MOMENTUM=0.0
-NESTEROV=0
+MOMENTUM=0.01
 
 # run
 EXEC=$PROJECT_ROOT/src/main.py
 
-python3 $EXEC --database $PATH_DB --log $PATH_LOGFILE --epochs $EPOCHS --batch_size $BATCH_SIZE --shuffle $SHUFFLE --model_save_path $PATH_SAVED_MODELS --stats_save_path $PATH_SAVED_STATS --optimizer $OPTIMIZER --learning_rate $LEARNING_RATE --weight_decay $WEIGHT_DECAY --lstm_hidden_size $HIDDEN_SIZE --lstm_hidden_layers $HIDDEN_LAYERS --bidirectional $BIDIRECTIONAL --momentum $MOMENTUM --nesterov $NESTEROV --big_dataset $BIG_DATASET
+python3 $EXEC --database $PATH_DB --log $PATH_LOGFILE --epochs $EPOCHS --batch_size $BATCH_SIZE --model_save_path $PATH_SAVED_MODELS --stats_save_path $PATH_SAVED_STATS --optimizer $OPTIMIZER --learning_rate $LEARNING_RATE --weight_decay $WEIGHT_DECAY --lstm_hidden_size $HIDDEN_SIZE --lstm_hidden_layers $HIDDEN_LAYERS --bidirectional $BIDIRECTIONAL --momentum $MOMENTUM --big_dataset $BIG_DATASET
 

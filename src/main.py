@@ -7,7 +7,7 @@ from torch.optim import Adam, SGD
 
 from dataset.db_query import LeagueTag, SeasonTag
 from dataset.dataset import SingleSeasonSingleLeague
-from model.model import TeamEncoder, SiamesePredictionNet
+from model.model import TeamEncoder, SiamesePredictionNet, DensePredictionNet
 from dataset.train_valid_test_loader import make_small_test_set, make_small_train_set, make_small_valid_set
 from dataset.train_valid_test_loader import make_test_set, make_train_set, make_valid_set
 
@@ -42,10 +42,12 @@ parser.add_argument("--model_save_path", type=str, help="path to saved model wei
 parser.add_argument("--stats_save_path", type=str, help="path to saved training statistics, if None they won't be saved", default=None)
 args = parser.parse_args()
 
+
+
 def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loader, batch_size, epoch_number):
     running_loss = 0.0
     running_loss_saved = list()
-    steps = 50  # print loss every k steps
+    steps = 1  # print loss every k steps
 
     for i, (match, result) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -54,15 +56,23 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
         players_away = match["players_away"]
 
         if batch_size == 1:
-            players_home = map(lambda x: torch.unsqueeze(x, 0), players_home)
-            players_away = map(lambda x: torch.unsqueeze(x, 0), players_away)
+            players_home = list(map(lambda x: torch.unsqueeze(x, 0), players_home))
+            players_away = list(map(lambda x: torch.unsqueeze(x, 0), players_away))
 
-        # send player vectors to device
-        players_home = map(lambda x: x.to(device=device), players_home)
-        players_away = map(lambda x: x.to(device=device), players_away)
+        for x in players_home:
+            x = x.to(device=device)
+        for x in players_away:
+            x = x.to(device=device)
+        
+        
+        players_home_tensor = torch.stack(players_home, dim=1)
+        players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
 
-        pred_result = model(players_home, players_away)
-        pred_result = torch.squeeze(pred_result, 0)  # remove sequence idx 
+        players_away_tensor = torch.stack(players_away, dim=1).view(players_away_tensor.shape[0], -1)
+        players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1) 
+
+
+        pred_result = model(players_home_tensor, players_away_tensor)
 
         if batch_size == 1:
             result = torch.unsqueeze(result, 0)
@@ -83,28 +93,38 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
 
 def validate(model, optimizer, loss_fn, device, valid_loader):
     losses = list()
+    num_correct = 0
     with torch.no_grad():
         for i, (match, result) in enumerate(valid_loader):
             players_home = match["players_home"]
             players_away = match["players_away"]
 
-            players_home = map(lambda x: torch.unsqueeze(x, 0), players_home)
-            players_away = map(lambda x: torch.unsqueeze(x, 0), players_away)
-
             # send player vectors to device
-            players_home = map(lambda x: x.to(device=device), players_home)
-            players_away = map(lambda x: x.to(device=device), players_away)
+            for x in players_home:
+                x = torch.unsqueeze(x, 0)
+                x = x.to(device=device)
+            for x in players_away:
+                x = torch.unsqueeze(x, 0)
+                x = x.to(device=device)
 
-            pred_result = model(players_home, players_away)
-            pred_result = torch.squeeze(pred_result, 0)  # remove sequence idx 
+            players_home_tensor = torch.stack(players_home, dim=1)
+            players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
 
-            result = torch.unsqueeze(result, 0)
+            players_away_tensor = torch.stack(players_away, dim=1).view(players_away_tensor.shape[0], -1)
+            players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1) 
+
+            pred_result = model(players_home_tensor, players_away_tensor)
+
             result = result.to(dtype=torch.float32, device=device)
-
+            
             error = loss_fn(pred_result, result)
             losses.append(error.item())
+            
+            _, arg_max_idx = torch.max(pred_result, 1)
+            if result[0, arg_max_idx] > 0:
+                num_correct += 1
 
-    return losses 
+    return losses, num_correct
 
 
 def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loader, batch_size):
@@ -113,13 +133,14 @@ def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loa
         train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loader, batch_size, epoch)
 
         model.eval()
-        losses = validate(model, optimizer, loss_fn, device, valid_loader)
+        losses, num_correct = validate(model, optimizer, loss_fn, device, valid_loader)
 
         avg_loss = float(sum(losses)) / float(len(losses))
+        acc = float(num_correct) / float(len(valid_loader)) 
 
         logging.info(
-            "epoch {} | average validation loss {}"
-            .format(epoch, avg_loss))
+            "epoch {} | average validation loss {} | validation acc {}"
+            .format(epoch, avg_loss, acc))
 
 def get_device(use_cuda):
     if use_cuda and torch.cuda.is_available():
@@ -149,10 +170,13 @@ def run_training():
     else:
         device = get_device(use_cuda=False)
 
-    model = SiamesePredictionNet(
-        35,
-        hidden_size=args.lstm_hidden_size,
-        num_hidden_layers=args.lstm_hidden_layers)
+    # model = SiamesePredictionNet(
+        # 35,
+        # hidden_size=args.lstm_hidden_size,
+        # num_hidden_layers=args.lstm_hidden_layers)
+    
+    model = DensePredictionNet(11*35)
+
     model.to(device)
 
     if args.optimizer == "Adam":
