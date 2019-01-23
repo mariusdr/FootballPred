@@ -76,8 +76,8 @@ class SingleSeasonSingleLeague(data.Dataset):
         process_end = time.time()
         logging.debug(
             "time for processing data {}".format(process_end - process_start))
-	
-	# Simply the number of the samples
+
+    # Simply the number of the samples
     def __len__(self):
         'Denotes the total number of samples'
         return self.length
@@ -124,6 +124,8 @@ class SingleSeasonSingleLeague(data.Dataset):
             "team_away": encoded_team_away,
             "players_home": encoded_players_home,
             "players_away": encoded_players_away,
+            "home_team_goal": match["home_team_goal"],
+            "away_team_goal": match["away_team_goal"]
         }
 
         y = torch.zeros(3)
@@ -138,31 +140,9 @@ class SingleSeasonSingleLeague(data.Dataset):
 
         return X, y
 
-    # def current_form(self, team_id, match, count=5):
-    # matches_all = self.matches.loc[
-    # (self.matches['home_team_api_id'] == team_id) |
-    # (self.matches['away_team_api_id'] == team_id)]
-    # m_sorted = sorted(
-    # matches_all.iterrows(),
-    # key=lambda t: self.time_diff_nabs(t[1]["date"], match["date"]))
-    # m_filtered = filter(
-    # lambda x: self.time_diff_nabs(x[1]["date"], match["date"]) > 0,
-    # m_sorted)
-    # wins = 0
-    # for m in itertools.islice(m_filtered, 5):
-    # if (m[1]["result"] == "home"
-    # and m[1]["home_team_api_id"] == team_id):
-    # wins += 2
-    # elif (m[1]["result"] == "away"
-    # and m[1]["away_team_api_id"] == team_id):
-    # wins += 2
-    # elif (m[1]["result"] == "draw"):
-    # wins += 1
 
-    # return self.one_hot_value_int(wins, 0, count * 2)
-	
     """
-	Selects a team with a given id (team_id) from a dataframe (teams).
+        Selects a team with a given id (team_id) from a dataframe (teams).
     Uses internal caching to avoid a lot of searches against the dataframe.
     
     If there are multiple matches it selects the one which is the closest to the given match time.

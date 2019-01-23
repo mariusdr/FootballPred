@@ -7,7 +7,7 @@ from torch.optim import Adam, SGD
 
 from dataset.db_query import LeagueTag, SeasonTag
 from dataset.dataset import SingleSeasonSingleLeague
-from model.model import TeamEncoder, SiamesePredictionNet, DensePredictionNet
+from model.model import TeamEncoder, LSTMPredictionNet, DensePredictionNet
 from dataset.train_valid_test_loader import make_small_test_set, make_small_train_set, make_small_valid_set
 from dataset.train_valid_test_loader import make_test_set, make_train_set, make_valid_set
 
@@ -47,17 +47,16 @@ args = parser.parse_args()
 def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loader, batch_size, epoch_number):
     running_loss = 0.0
     running_loss_saved = list()
-    steps = 15  # print loss every k steps
+    steps = 20  # print running loss every k steps
 
     for i, (match, result) in enumerate(train_loader):
         optimizer.zero_grad()
 
         players_home = match["players_home"]
         players_away = match["players_away"]
-
-        if batch_size == 1:
-            players_home = list(map(lambda x: torch.unsqueeze(x, 0), players_home))
-            players_away = list(map(lambda x: torch.unsqueeze(x, 0), players_away))
+    
+        #goals_home = match["home_team_goal"]
+        #goals_away = match["away_team_goal"]
 
         for x in players_home:
             x = x.to(device=device)
@@ -74,8 +73,6 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
 
         pred_result = model(players_home_tensor, players_away_tensor)
 
-        if batch_size == 1:
-            result = torch.unsqueeze(result, 0)
         result = result.to(dtype=torch.float32, device=device)
     
         error = loss_fn(pred_result, result)
@@ -172,10 +169,9 @@ def run_training():
     else:
         device = get_device(use_cuda=False)
 
-    # model = SiamesePredictionNet(
+    # model = LSTMPredictionNet(
         # 35,
-        # hidden_size=args.lstm_hidden_size,
-        # num_hidden_layers=args.lstm_hidden_layers)
+        # hidden_size=args.lstm_hidden_size)
     
     model = DensePredictionNet(11*35)
 
