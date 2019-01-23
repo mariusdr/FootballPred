@@ -116,6 +116,13 @@ class SingleSeasonSingleLeague(data.Dataset):
         for idd, player in players_away.items():
             encoded_players_away.append(self.encode_player(player[1]))
 
+        if (len(players_home) < 11):
+            for _ in range(11 - len(players_home)):
+                encoded_players_home.append(self.encode_player(None))
+        if (len(players_away) < 11):
+            for _ in range(11 - len(players_home)):
+                encoded_players_away.append(self.encode_player(None))
+
         # Load data and get label
         X = {
             "home_team_name": match["home_team_long_name"],
