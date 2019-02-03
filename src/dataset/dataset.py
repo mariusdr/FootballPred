@@ -13,6 +13,7 @@ import sqlite3
 import logging
 import time
 import math
+import random 
 
 from dataset.db_query import query_all_players, query_matches, query_teams, get_player_ids_from_match
 from dataset.util import MatchCaches
@@ -41,11 +42,12 @@ class SingleSeasonSingleLeague(data.Dataset):
     """
     Initializes the dataset by queuing the SQL database given by sqpath.
     """
-    def __init__(self, sqpath, league_tag, season_tag):
+    def __init__(self, sqpath, league_tag, season_tag, undersample_probs=(1.0, 1.0, 1.0)):
         'Initialization'
         self.league = league_tag
         self.season = season_tag
         self.sqpath = sqpath
+        self.undersample_probs = undersample_probs
 
         sqlload_start = time.time()
         teams = None
@@ -68,10 +70,18 @@ class SingleSeasonSingleLeague(data.Dataset):
 
         process_start = time.time()
 
-        self.samples = [
+        samples = [
             self._generate_sample(idx, teams, players, matches)
             for idx in range(self.length)
         ]
+
+        buf = [] 
+        for X, y in samples:
+            keep_sample = self._undersample(y) 
+            if keep_sample:
+                buf.append((X, y))
+        
+        self.samples = buf
 
         process_end = time.time()
         logging.debug(
@@ -80,12 +90,13 @@ class SingleSeasonSingleLeague(data.Dataset):
     # Simply the number of the samples
     def __len__(self):
         'Denotes the total number of samples'
-        return self.length
+        return len(self.samples)
 
     # Gets a single item with a given index.
     def __getitem__(self, index):
         return self.samples[index]
-		
+    
+
     """
     Generates a single sample with a given index and needs the teams, players and matches dataframes.
     """
@@ -144,8 +155,25 @@ class SingleSeasonSingleLeague(data.Dataset):
             y = torch.as_tensor([0, 0, 1])
         else:
             raise Exception("expected either 'home', 'draw' or 'away'")
+    
 
         return X, y
+
+    def _undersample(self, y):
+        def biased_coin(p):
+            " p is prob for True "
+            if random.random() < p:
+                return True 
+            else:
+                return False
+        
+        hwp, dp, awp = self.undersample_probs
+        if y[0] == 1: 
+            return biased_coin(hwp)  
+        if y[1] == 1:
+            return biased_coin(dp)
+        if y[2] == 1:
+            return biased_coin(awp)
 
 
     """

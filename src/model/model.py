@@ -30,7 +30,6 @@ class TeamEncoder(nn.Module):
 
         for x in player_seq:
             x = F.relu(self.fc1(x))
-            x = F.relu(self.fc2(x))
             h1, c1 = self.lstm1(x, (h1, c1))
             h2, c2 = self.lstm2(h1, (h2, c2))
             h3, c3 = self.lstm3(h2, (h3, c3))
@@ -53,18 +52,28 @@ class LSTMPredictionNet(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(LSTMPredictionNet, self).__init__()
 
-        self.encoder = TeamEncoder(input_size=input_size, hidden_size=256)
+        self.encoder = TeamEncoder(input_size=input_size, hidden_size=hidden_size)
+        
+        self.p1 = nn.Linear(hidden_size, hidden_size) 
+        self.p2 = nn.Linear(hidden_size, hidden_size) 
+        self.p3 = nn.Linear(hidden_size, hidden_size) 
 
-        self.fc1 = nn.Linear(2 * hidden_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, 3)
+        self.fc1 = nn.Linear(hidden_size, 3)
 
     def forward(self, seq1, seq2):
         y1 = self.encoder(seq1)
         y2 = self.encoder(seq2)
+        
+        y1 = F.relu(self.p1(y1))
+        y1 = F.relu(self.p2(y1))
+        y1 = F.relu(self.p3(y1))
 
-        y = torch.cat((y1, y2), 1)
-        y = F.relu(self.fc1(y))
-        y = F.softmax(self.fc2(y), dim=1)
+        y2 = F.relu(self.p1(y2))
+        y2 = F.relu(self.p2(y2))
+        y2 = F.relu(self.p3(y2))
+
+        y = y1 - y2
+        y = F.softmax(self.fc1(y), dim=1)
         return y
 
 
@@ -75,31 +84,40 @@ class DensePredictionNet(nn.Module):
     instead it just concatenates both teams player vectors into one tensor 
     and then computes a decision based on that.
     """
-    def __init__(self, input_size):
+    def __init__(self, input_size, hidden_size=512):
         super(DensePredictionNet, self).__init__()
         self.input_size = input_size
+    
+        base_block = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU()
+            # nn.Dropout(p=0.10)
+        )
 
         self.shared = nn.Sequential(
-            nn.Linear(input_size, 256),
+            nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(256, 128),
-            nn.ReLU()
+            base_block,
+            base_block,
+            base_block, 
+            base_block,
+            base_block, 
+            base_block
         )
 
         self.prediction = nn.Sequential(
-            nn.Linear(256, 128),
+            nn.Linear(2*hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(128, 3),
+            nn.Linear(hidden_size, 3),
             nn.Softmax(dim=1)
         )
 
     def forward(self, x1, x2):
-        x1 = self.shared(x1)
-        x2 = self.shared(x2)
+        y1 = self.shared(x1)
+        y2 = self.shared(x2)
 
-        y = torch.cat((x1, x2), 1)
+        #y = torch.cat((x1, x2), 1)
+        y = torch.cat((y1 - y2, y2 - y1), 1)
 
         return self.prediction(y)
 
@@ -114,31 +132,42 @@ class DenseCompNet(nn.Module):
     so networks with home win / away win / draw output can just "learn" to put alot of 
     probability mass on home win and get good results w.o. really learning something ...
     """
-    def __init__(self, input_size):
+    def __init__(self, input_size, hidden_size=256):
         super(DenseCompNet, self).__init__()
         self.input_size = input_size
+        
+        base_block = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(p=0.10)
+        )
 
         self.shared = nn.Sequential(
-            nn.Linear(input_size, 256),
+            nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(256, 128),
-            nn.ReLU()
+            base_block,
+            base_block,
+            base_block,
+            base_block
+        )
+
+        self.fusion = nn.Sequential(
+            nn.Linear(2*hidden_size, hidden_size),
+            nn.ReLU(),
+            base_block,
+            base_block,
+            base_block
         )
 
         self.prediction = nn.Sequential(
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(128, 2),
-            nn.ReLU()
+            nn.Linear(hidden_size, 2)
         )
 
     def forward(self, x1, x2):
-        x1 = self.shared(x1)
-        x2 = self.shared(x2)
+        y1 = self.shared(x1)
+        y2 = self.shared(x2)
 
-        y = torch.cat((x1, x2), 1)
+        y = self.fusion(torch.cat((y1 - y2, y2 - y1), 1))
         return self.prediction(y)
 
 
