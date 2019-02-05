@@ -30,7 +30,7 @@ HIDDEN_LAYERS=4
 BIDIRECTIONAL=0
 
 # hyperparameters for training
-EPOCHS=100
+EPOCHS=20
 BATCH_SIZE=16
 
 #OPTIMIZER="Adam"

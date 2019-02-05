@@ -42,12 +42,12 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
         optimizer.step()
 
         saved_losses.append(error.item())
-        
+
         # running_loss += error.item()
         # if i % steps == 0 and i > 0:
-            # running_loss = running_loss / steps
-            # logging.info("epoch {} | step {} | running loss {}".format(epoch_number, i, running_loss))
-            # running_loss = 0.0
+        # running_loss = running_loss / steps
+        # logging.info("epoch {} | step {} | running loss {}".format(epoch_number, i, running_loss))
+        # running_loss = 0.0
 
     return saved_losses
 
@@ -59,6 +59,10 @@ def validate(model, optimizer, loss_fn, device, valid_loader):
     predicted_home_win = 0
     predicted_away_win = 0
     predicted_draw = 0
+
+    total_home_win = 0
+    total_away_win = 0
+    total_draw = 0
 
     with torch.no_grad():
         for i, (match, result) in enumerate(valid_loader):
@@ -100,9 +104,17 @@ def validate(model, optimizer, loss_fn, device, valid_loader):
                 if arg_max_idx == 2:
                     predicted_away_win += 1
 
+            if result[0, 0] > 0:
+                total_home_win += 1
+            if result[0, 1] > 0:
+                total_draw += 1
+            if result[0, 2] > 0:
+                total_away_win += 1
+
         logging.info(
-            "predicted (home, draw, away) win correctly: {} | {} | {}".format(
-                predicted_home_win, predicted_draw, predicted_away_win))
+            "predicted (home, draw, away) win correctly: {}/{} | {}/{} | {}/{}"
+            .format(predicted_home_win, total_home_win, predicted_draw,
+                    total_draw, predicted_away_win, total_away_win))
     return losses, num_correct
 
 
@@ -121,19 +133,23 @@ def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loa
             "epoch {} | average train loss {} | average validation loss {} | validation acc {}"
             .format(epoch, avg_train_loss, avg_valid_loss, valid_acc))
 
-        savestate = {
-            "epoch": epoch,
-            "state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict()
-        }
-        savepath = model_save_path + "/dpn_checkpoint_epoch{}.pth".format(epoch)
-        torch.save(savestate, savepath)
+
+        if model_save_path is not None:
+            savestate = {
+                    "epoch": epoch,
+                    "state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict()
+                    }
+            savepath = model_save_path + "/dpn_checkpoint_epoch{}.pth".format(epoch)
+            torch.save(savestate, savepath)
 
         losses.append((avg_train_loss, avg_valid_loss, valid_acc))
-    save_losses(losses, stats_save_path + "/dpn_train_stats.txt")
+
+    if stats_save_path is not None:
+        save_losses(losses, stats_save_path + "/dpn_train_stats.txt")
 
 
-def run_training_dpn(train_set, valid_set, args):
+def run_training_dpn(train_set, valid_set, args, model = None):
     train_loader = DataLoader(
         train_set, batch_size=args.batch_size, shuffle=args.shuffle)
     valid_loader = DataLoader(valid_set, batch_size=1, shuffle=False)
@@ -142,8 +158,10 @@ def run_training_dpn(train_set, valid_set, args):
         device = get_device(use_cuda=True)
     else:
         device = get_device(use_cuda=False)
+    
+    if model is None:
+        model = DensePredictionNet(11*35)
 
-    model = DensePredictionNet(11*35)
     model.to(device)
 
     if args.optimizer == "Adam":
@@ -164,3 +182,79 @@ def run_training_dpn(train_set, valid_set, args):
           args.stats_save_path)
 
     return model
+
+def test(model, device, test_loader):
+    num_correct = 0
+
+    # count how often results were correctly predicted
+    predicted_home_win = 0
+    predicted_away_win = 0
+    predicted_draw = 0
+
+    total_home_win = 0
+    total_away_win = 0
+    total_draw = 0
+
+    with torch.no_grad():
+        for i, (match, result) in enumerate(test_loader):
+            players_home = match["players_home"]
+            players_away = match["players_away"]
+
+            # send player vectors to device
+            for x in players_home:
+                x = torch.unsqueeze(x, 0)
+                x = x.to(device=device)
+            for x in players_away:
+                x = torch.unsqueeze(x, 0)
+                x = x.to(device=device)
+
+            players_home_tensor = torch.stack(players_home, dim=1)
+            players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
+            players_home_tensor = players_home_tensor.to(device=device)
+
+            players_away_tensor = torch.stack(players_away, dim=1)
+            players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
+            players_away_tensor = players_away_tensor.to(device=device)
+
+            pred_result = model(players_home_tensor, players_away_tensor)
+
+            result = result.to(dtype=torch.float32, device=device)
+
+            _, arg_max_idx = torch.max(pred_result, 1)
+            if result[0, arg_max_idx] > 0:
+                num_correct += 1
+
+                if arg_max_idx == 0:
+                    predicted_home_win += 1
+                if arg_max_idx == 1:
+                    predicted_draw += 1
+                if arg_max_idx == 2:
+                    predicted_away_win += 1
+
+            if result[0, 0] > 0:
+                total_home_win += 1
+            if result[0, 1] > 0:
+                total_draw += 1
+            if result[0, 2] > 0:
+                total_away_win += 1
+
+        logging.info(
+            "predicted (home, draw, away) win correctly: {}/{} | {}/{} | {}/{}"
+            .format(predicted_home_win, total_home_win, predicted_draw,
+                    total_draw, predicted_away_win, total_away_win))
+    return num_correct
+
+
+def run_testing_dpn(model, test_set, args):
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+
+    if args.device == "cuda":
+        device = get_device(use_cuda=True)
+    else:
+        device = get_device(use_cuda=False)
+
+    num_correct = test(model, device, test_loader)
+    acc = float(num_correct) / float(len(test_loader))
+    logging.info("testing accuracy: {}".format(acc))
+
+

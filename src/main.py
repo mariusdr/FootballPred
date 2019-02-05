@@ -8,8 +8,9 @@ from dataset.dataset import SingleSeasonSingleLeague
 from model.model import TeamEncoder, LSTMPredictionNet, DensePredictionNet
 from dataset.train_valid_test_loader import make_small_test_set, make_small_train_set, make_small_valid_set
 from dataset.train_valid_test_loader import make_test_set, make_train_set, make_valid_set
-from model.train_dpn import run_training_dpn
-from model.train_dcn import run_training_dcn
+from model.train_dpn import run_training_dpn, run_testing_dpn
+from model.train_dcn import run_training_dcn, run_testing_dcn
+from model.train_hybrid import run_training_hybrid, run_testing_hybrid
 
 import random
 
@@ -55,19 +56,35 @@ def main():
         handlers=handlers,
         format='%(asctime)s %(levelname)-8s %(message)s',
         level=loglevel)
-    
+
     logging.info(str(args))
 
     sql_path = args.database
+    train_us_probs = (0.6, 1.0, 1.0)
+    test_us_probs = (0.6, 1.0, 1.0)
+
+    logging.info(
+        "undersampling with probabilities: train = {} | test = {}".format(
+            train_us_probs, test_us_probs))
     if bool(args.big_dataset):
-        train_set = make_train_set(sql_path)
-        valid_set = make_valid_set(sql_path)
+        train_set = make_train_set(sql_path, undersample_probs=train_us_probs)
+        valid_set = make_valid_set(sql_path, undersample_probs=test_us_probs)
+        test_set = make_test_set(sql_path, undersample_probs=test_us_probs)
     else:
-        train_set = make_small_train_set(sql_path, undersample_probs=(0.65, 0.0, 1.0))
-        valid_set = make_small_valid_set(sql_path, undersample_probs=(1.0, 0.0, 1.0))
+        train_set = make_small_train_set(sql_path, undersample_probs=train_us_probs)
+        valid_set = make_small_valid_set(sql_path, undersample_probs=test_us_probs)
+        test_set = make_small_test_set(sql_path, undersample_probs=test_us_probs)
+
+    #model = run_training_dpn(train_set, valid_set, args)
+    #run_testing_dpn(model, test_set, args) 
+
+    #model = run_training_dcn(train_set, valid_set, args)
+    #run_testing_dcn(model, test_set, args)
     
-    # run_training_dpn(train_set, valid_set, args)
-    run_training_dcn(train_set, valid_set, args)
+    model = run_training_hybrid(train_set, train_set, valid_set, valid_set, args)
+    run_testing_hybrid(model, test_set, args)
+
+    logging.info(str(model))
 
 if __name__ == "__main__":
     main()

@@ -87,11 +87,12 @@ class DensePredictionNet(nn.Module):
     def __init__(self, input_size, hidden_size=512):
         super(DensePredictionNet, self).__init__()
         self.input_size = input_size
+        self.hidden_size = hidden_size
     
         base_block = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU()
-            # nn.Dropout(p=0.10)
+            nn.ReLU(),
+            nn.Dropout(p=0.10)
         )
 
         self.shared = nn.Sequential(
@@ -99,15 +100,16 @@ class DensePredictionNet(nn.Module):
             nn.ReLU(),
             base_block,
             base_block,
-            base_block, 
-            base_block,
-            base_block, 
+            base_block
+        )
+
+        self.fusion = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
             base_block
         )
 
         self.prediction = nn.Sequential(
-            nn.Linear(2*hidden_size, hidden_size),
-            nn.ReLU(),
             nn.Linear(hidden_size, 3),
             nn.Softmax(dim=1)
         )
@@ -117,7 +119,8 @@ class DensePredictionNet(nn.Module):
         y2 = self.shared(x2)
 
         #y = torch.cat((x1, x2), 1)
-        y = torch.cat((y1 - y2, y2 - y1), 1)
+        #y = self.fusion(torch.cat((y1 - y2, y2 - y1), 1))
+        y = self.fusion(y1-y2) 
 
         return self.prediction(y)
 
@@ -132,9 +135,10 @@ class DenseCompNet(nn.Module):
     so networks with home win / away win / draw output can just "learn" to put alot of 
     probability mass on home win and get good results w.o. really learning something ...
     """
-    def __init__(self, input_size, hidden_size=256):
+    def __init__(self, input_size, hidden_size=512):
         super(DenseCompNet, self).__init__()
         self.input_size = input_size
+        self.hidden_size = hidden_size
         
         base_block = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
@@ -147,15 +151,12 @@ class DenseCompNet(nn.Module):
             nn.ReLU(),
             base_block,
             base_block,
-            base_block,
             base_block
         )
 
         self.fusion = nn.Sequential(
             nn.Linear(2*hidden_size, hidden_size),
             nn.ReLU(),
-            base_block,
-            base_block,
             base_block
         )
 
