@@ -4,3 +4,5 @@ __pycache__
 saved/
 runscript.sh
 runtraining.sh
+*.pkl
+*/__pycache__/*

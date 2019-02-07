@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam, SGD
 
-from model.model import DensePredictionNet
+from model.model import RecurrentPredictionNet
 from dataset.train_valid_test_loader import make_small_test_set, make_small_train_set, make_small_valid_set
 from dataset.train_valid_test_loader import make_test_set, make_train_set, make_valid_set
 from model.train_util import get_device, save_losses
@@ -27,19 +27,26 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
             x = x.to(device=device)
 
         players_home_tensor = torch.stack(players_home, dim=1)
-        players_away_tensor = torch.stack(players_away, dim=1)
-        
-        players_home_tensor = players_home_tensor.permute(0, 2, 1) 
-        players_away_tensor = players_away_tensor.permute(0, 2, 1) 
-        # print(players_away_tensor.shape, players_home_tensor.shape)
-                
-        # players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
+        players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
         players_home_tensor = players_home_tensor.to(device=device)
 
-        # players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
+        players_away_tensor = torch.stack(players_away, dim=1)
+        players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
         players_away_tensor = players_away_tensor.to(device=device)
+    
+        
+        history_home = match["home_team_history"]
+        history_away = match["away_team_history"]
+        for i in range(len(history_home)):
+            history_home[i] = history_home[i].to(device=device)
+        for i in range(len(history_away)):
+            history_away[i] = history_away[i].to(device=device)
 
-        pred_result = model(players_home_tensor, players_away_tensor)
+
+        hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device)
+        hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device)
+        pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
+        
         result = result.to(dtype=torch.float32, device=device)
 
         error = loss_fn(pred_result, result)
@@ -83,20 +90,23 @@ def validate(model, optimizer, loss_fn, device, valid_loader):
                 x = x.to(device=device)
 
             players_home_tensor = torch.stack(players_home, dim=1)
-            # players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
+            players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
             players_home_tensor = players_home_tensor.to(device=device)
 
             players_away_tensor = torch.stack(players_away, dim=1)
-            # players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
+            players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
             players_away_tensor = players_away_tensor.to(device=device)
+
+            history_home = match["home_team_history"]
+            history_away = match["away_team_history"]
+            for i in range(len(history_home)):
+                history_home[i] = history_home[i].to(device=device)
+            for i in range(len(history_away)):
+                history_away[i] = history_away[i].to(device=device)
             
-
-            players_home_tensor = players_home_tensor.permute(0, 2, 1) 
-            players_away_tensor = players_away_tensor.permute(0, 2, 1) 
-            # print(players_away_tensor.shape, players_home_tensor.shape)
-
-            pred_result = model(players_home_tensor, players_away_tensor)
-            # pred_result = model(players_home, players_away)
+            hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device=device)
+            hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device=device)
+            pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
 
             result = result.to(dtype=torch.float32, device=device)
 
@@ -159,7 +169,7 @@ def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loa
         save_losses(losses, stats_save_path + "/dpn_train_stats.txt")
 
 
-def run_training_dpn(train_set, valid_set, args, model = None):
+def run_training_rnn_dpn(train_set, valid_set, args, model=None):
     train_loader = DataLoader(
         train_set, batch_size=args.batch_size, shuffle=args.shuffle)
     valid_loader = DataLoader(valid_set, batch_size=1, shuffle=False)
@@ -170,8 +180,10 @@ def run_training_dpn(train_set, valid_set, args, model = None):
         device = get_device(use_cuda=False)
     
     if model is None:
-        model = DensePredictionNet(11*35)
-
+        model = RecurrentPredictionNet(11*35, 2)
+    
+    model.hist_enc.to(device)
+    model.dpn.to(device)
     model.to(device)
 
     if args.optimizer == "Adam":
@@ -219,18 +231,23 @@ def test(model, device, test_loader):
                 x = x.to(device=device)
 
             players_home_tensor = torch.stack(players_home, dim=1)
-            # players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
+            players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
             players_home_tensor = players_home_tensor.to(device=device)
 
             players_away_tensor = torch.stack(players_away, dim=1)
-            # players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
+            players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
             players_away_tensor = players_away_tensor.to(device=device)
 
-            players_home_tensor = players_home_tensor.permute(0, 2, 1) 
-            players_away_tensor = players_away_tensor.permute(0, 2, 1) 
-            # print(players_away_tensor.shape, players_home_tensor.shape)
+            history_home = match["home_team_history"]
+            history_away = match["away_team_history"]
+            for i in range(len(history_home)):
+                history_home[i] = history_home[i].to(device=device)
+            for i in range(len(history_away)):
+                history_away[i] = history_away[i].to(device=device)
 
-            pred_result = model(players_home_tensor, players_away_tensor)
+            hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device=device)
+            hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device=device)
+            pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
 
             result = result.to(dtype=torch.float32, device=device)
 
@@ -259,7 +276,7 @@ def test(model, device, test_loader):
     return num_correct
 
 
-def run_testing_dpn(model, test_set, args):
+def run_testing_rnn_dpn(model, test_set, args):
     test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
     if args.device == "cuda":

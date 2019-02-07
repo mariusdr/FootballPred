@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import logging
 
 class TeamEncoder(nn.Module):
     """
@@ -84,28 +84,42 @@ class DensePredictionNet(nn.Module):
     instead it just concatenates both teams player vectors into one tensor 
     and then computes a decision based on that.
     """
-    def __init__(self, input_size, hidden_size=512):
+    def __init__(self, input_size, hidden_size=128):
         super(DensePredictionNet, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
     
         base_block = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(p=0.10)
+            nn.ReLU()
         )
 
+        # self.shared = nn.Sequential(
+            # nn.Linear(input_size, hidden_size),
+            # nn.ReLU(),
+            # base_block,
+            # base_block,
+            # base_block
+        # )
+
         self.shared = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
+            nn.Conv1d(35, 128, 3),
             nn.ReLU(),
-            base_block,
-            base_block,
-            base_block
+            nn.Conv1d(128, 256, 3),
+            nn.ReLU(),
+            nn.Conv1d(256, 512, 3),
+            nn.ReLU(),
+            nn.Conv1d(512, 1024, 3),
+            nn.ReLU(), 
+            nn.Conv1d(1024, 1536, 3)
         )
 
         self.fusion = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size),
+            # nn.Linear(2*hidden_size, hidden_size),
+            nn.Linear(2*1536, hidden_size),
             nn.ReLU(),
+            base_block,
+            base_block,
             base_block
         )
 
@@ -117,12 +131,74 @@ class DensePredictionNet(nn.Module):
     def forward(self, x1, x2):
         y1 = self.shared(x1)
         y2 = self.shared(x2)
+        
+        y1 = y1.view(-1, 1536)
+        y2 = y2.view(-1, 1536)
 
-        #y = torch.cat((x1, x2), 1)
+        y = self.fusion(torch.cat((y1, y2), 1))
         #y = self.fusion(torch.cat((y1 - y2, y2 - y1), 1))
-        y = self.fusion(y1-y2) 
+        # y = self.fusion(y1-y2) 
 
         return self.prediction(y)
+
+
+class MatchHistoryEncoder(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(MatchHistoryEncoder, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        self.project = nn.Sequential(
+            nn.Linear(input_size, hidden_size), 
+            nn.ReLU()
+        )
+        self.lstm1 = nn.LSTMCell(self.hidden_size, self.hidden_size)
+    
+    def forward(self, seq, hidden):
+        h, c = hidden
+        if len(seq) == 0:
+            return h
+
+        for x in seq:
+            x = self.project(x)
+            h, c = self.lstm1(x, (h, c))
+        return h
+
+    def _init_hidden(self, batch_size, device):
+        h = torch.zeros(batch_size, self.hidden_size)
+        c = torch.zeros(batch_size, self.hidden_size)
+        h = h.to(device=device)
+        c = c.to(device=device)
+        return h, c
+    
+
+class RecurrentPredictionNet(nn.Module):
+    def __init__(self, players_input_size, history_input_size, dn_hidden_size=512, rnn_hidden_size=128):
+        super(RecurrentPredictionNet, self).__init__()
+
+        self.dpn = DensePredictionNet(players_input_size, dn_hidden_size)
+        self.hist_enc = MatchHistoryEncoder(history_input_size, rnn_hidden_size)
+
+        self.prediction = nn.Sequential(
+            nn.Linear(dn_hidden_size + 2 * rnn_hidden_size, dn_hidden_size),
+            nn.ReLU(),
+            nn.Linear(dn_hidden_size, dn_hidden_size),
+            nn.ReLU(),
+            nn.Linear(dn_hidden_size, 3),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x1, x2, hist1, hist2, hidden1, hidden2):
+        y1 = self.dpn.shared(x1)
+        y2 = self.dpn.shared(x2)
+        yf = self.dpn.fusion(y1-y2) 
+        
+        h1 = self.hist_enc(hist1, hidden1)
+        h2 = self.hist_enc(hist2, hidden2)
+
+        y = torch.cat((h1, yf, h2), 1)
+        return self.prediction(y)
+
 
 
 class DenseCompNet(nn.Module):

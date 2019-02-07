@@ -13,7 +13,7 @@ import sqlite3
 import logging
 import time
 import math
-import random 
+import random
 
 from dataset.db_query import query_all_players, query_matches, query_teams, get_player_ids_from_match
 from dataset.util import MatchCaches
@@ -30,24 +30,25 @@ class SingleSeasonSingleLeague(data.Dataset):
     """
     Holds all matches of given season of a given league ordered by match dates.
     """
-	
-	# Determines whether we use a padding for players/teams that could not be found
+
+    # Determines whether we use a padding for players/teams that could not be found
     USE_PLAYER_PADDING = True
     USE_TEAM_PADDING = True
-	
-	# Caching directories, in our case this caching is much faster than access over dataframe index
+
+    # Caching directories, in our case this caching is much faster than access over dataframe index
     PLAYER_CACHE = dict()
     TEAM_CACHE = dict()
-	
+
     """
     Initializes the dataset by queuing the SQL database given by sqpath.
     """
-    def __init__(self, sqpath, league_tag, season_tag, undersample_probs=(1.0, 1.0, 1.0)):
+    def __init__(self, sqpath, league_tag, season_tag, undersample_probs=(1.0, 1.0, 1.0), load_odds=False):
         'Initialization'
         self.league = league_tag
         self.season = season_tag
         self.sqpath = sqpath
         self.undersample_probs = undersample_probs
+        self.load_odds = load_odds
 
         sqlload_start = time.time()
         teams = None
@@ -58,7 +59,7 @@ class SingleSeasonSingleLeague(data.Dataset):
             players = query_all_players(conn)
             matches = query_matches(conn, self.league, self.season)
         sqlload_end = time.time()
-		
+
         # Group players
         players.set_index("player_api_id", inplace=True)
         teams.set_index("team_api_id", inplace=True)
@@ -75,12 +76,12 @@ class SingleSeasonSingleLeague(data.Dataset):
             for idx in range(self.length)
         ]
 
-        buf = [] 
+        buf = []
         for X, y in samples:
-            keep_sample = self._undersample(y) 
+            keep_sample = self._undersample(y)
             if keep_sample:
                 buf.append((X, y))
-        
+
         self.samples = buf
 
         process_end = time.time()
@@ -95,7 +96,7 @@ class SingleSeasonSingleLeague(data.Dataset):
     # Gets a single item with a given index.
     def __getitem__(self, index):
         return self.samples[index]
-    
+
 
     """
     Generates a single sample with a given index and needs the teams, players and matches dataframes.
@@ -146,6 +147,18 @@ class SingleSeasonSingleLeague(data.Dataset):
             "away_team_goal": match["away_team_goal"]
         }
 
+        if self.load_odds:
+            odds_ids = [
+                "B365H", "B365D", "B365A", "BWH", "BWD", "BWA", "IWH", "IWD",
+                "IWA", "LBH", "LBD", "LBA", "PSH", "PSD", "PSA", "WHH", "WHD",
+                "WHA", "SJH", "SJD", "SJA", "VCH", "VCD", "VCA", "GBH", "GBD",
+                "GBA"
+            ]
+            
+            for o in odds_ids:
+                X[o] = match[o]
+
+
         y = torch.zeros(3)
         if match["result"] == "home":
             y = torch.as_tensor([1, 0, 0])
@@ -155,7 +168,6 @@ class SingleSeasonSingleLeague(data.Dataset):
             y = torch.as_tensor([0, 0, 1])
         else:
             raise Exception("expected either 'home', 'draw' or 'away'")
-    
 
         return X, y
 
@@ -163,13 +175,13 @@ class SingleSeasonSingleLeague(data.Dataset):
         def biased_coin(p):
             " p is prob for True "
             if random.random() < p:
-                return True 
+                return True
             else:
                 return False
-        
+
         hwp, dp, awp = self.undersample_probs
-        if y[0] == 1: 
-            return biased_coin(hwp)  
+        if y[0] == 1:
+            return biased_coin(hwp)
         if y[1] == 1:
             return biased_coin(dp)
         if y[2] == 1:
@@ -188,15 +200,15 @@ class SingleSeasonSingleLeague(data.Dataset):
         if (team_id in self.TEAM_CACHE):
             return self.TEAM_CACHE[team_id]
         if (team_id not in teams.index):
-            return [None, None]		
-        
+            return [None, None]
+
         team = teams.loc[team_id]
         sel_team = None
-		
+
         if isinstance(team, pd.Series):
             self.TEAM_CACHE[team_id] = [None, team]
             return self.TEAM_CACHE[team_id]
-		
+
         if (team.size > 0):
             sel_team = min(
                 team.iterrows(),
@@ -204,9 +216,9 @@ class SingleSeasonSingleLeague(data.Dataset):
             self.TEAM_CACHE[team_id] = sel_team
         elif self.USE_TEAM_PADDING:
             sel_team = [None, None]
-			
+
         return sel_team
-		
+
     """
 	Selects a set of players with given ids (player_ids) from a dataframe (players).
 	Also uses internal caching to avoid a lot of searches against the dataframe.
@@ -222,7 +234,7 @@ class SingleSeasonSingleLeague(data.Dataset):
             elif self.USE_PLAYER_PADDING:
                 team_dict[player_id] = [None, None] # necessary because the player vars are arrays
         return team_dict
-		
+
     """
 	Selects a single player with a given id from a dataframe.
 	Also uses internal caching to avoid a lot of searches against the dataframe.
@@ -232,7 +244,7 @@ class SingleSeasonSingleLeague(data.Dataset):
             return None
         if (player_id in self.PLAYER_CACHE):
             return self.PLAYER_CACHE[player_id]
-			
+
         res = players.loc[player_id]
 
         if len(res) == 0:
@@ -244,7 +256,7 @@ class SingleSeasonSingleLeague(data.Dataset):
             key=lambda t: self.time_diff(t[1]["date"], match_time))
         self.PLAYER_CACHE[player_id] = sel_player
         return sel_player
-	
+
     """
 	Encodes a single player to a pytorch tensor.
     """
@@ -261,14 +273,14 @@ class SingleSeasonSingleLeague(data.Dataset):
             "sliding_tackle", "gk_diving", "gk_handling", "gk_kicking",
             "gk_positioning", "gk_reflexes"
         ]
-		
+
         t = []
         if (player is None):
             t =  torch.zeros([35], dtype=torch.float32)
         else:
             t = torch.tensor(player[cols].astype("float32").values)
             t[torch.isnan(t)] = 0.0
-        
+
         return t
 
     """
@@ -285,7 +297,7 @@ class SingleSeasonSingleLeague(data.Dataset):
             "defenceAggression",
             "defenceTeamWidth"
         ]
-        
+
         t = []
         if (team is not None):
             t = torch.tensor(team[cols].astype("float32").values)
@@ -313,10 +325,10 @@ class SingleSeasonSingleLeagueTimeSlices(data.Dataset):
     then we also return less than @slice_size matches.
     """
 
-    def __init__(self, sqpath, league_tag, season_tag, slice_size):
+    def __init__(self, sqpath, league_tag, season_tag, slice_size, undersample_probs=(1.0, 1.0, 1.0), only_results=True):
         self.slice_size = slice_size
-        self.samples = SingleSeasonSingleLeague(sqpath, league_tag, season_tag)
-
+        self.samples = SingleSeasonSingleLeague(sqpath, league_tag, season_tag, undersample_probs=undersample_probs)
+        self.only_results = only_results
         self.time_slices = list()
         self._create_slices()
 
@@ -338,6 +350,43 @@ class SingleSeasonSingleLeagueTimeSlices(data.Dataset):
         'Denotes the total number of samples'
         return len(self.samples)
 
+    def _collect(self, matches, teamname):
+        results = list()
+        for m, _ in matches:
+            atn = m["away_team_name"]
+            htn = m["home_team_name"]
+
+            htg = float(m["home_team_goal"])
+            atg = float(m["away_team_goal"])
+
+            if teamname == atn:
+                t = (atg, htg)
+            elif teamname == htn:
+                t = (htg, atg)
+            else:
+                raise Exception("teamname is not contained in match history ...")
+
+            t = torch.tensor(t)
+            results.append(t)
+        return results
+
+    def _match_and_hist(self, sample):
+        match, result = sample["match"]
+        ht_name = match["home_team_name"]
+        at_name = match["away_team_name"]
+
+        at_matches = sample["away_past_matches"]
+        at_results = self._collect(at_matches, at_name)
+
+        ht_matches = sample["home_past_matches"]
+        ht_results = self._collect(ht_matches, ht_name)
+
+        match["home_team_history"] = ht_results
+        match["away_team_history"] = at_results
+        return match, result
+
+
+
     def __getitem__(self, index):
         match = self.samples[index]
         away_ts, home_ts = self.time_slices[index]
@@ -357,4 +406,9 @@ class SingleSeasonSingleLeagueTimeSlices(data.Dataset):
             "away_past_matches": away_past_matches,
             "home_past_matches": home_past_matches
         }
+
+        if self.only_results:
+            m, r = self._match_and_hist(item)
+            item = (m, r)
+
         return item

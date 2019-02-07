@@ -170,7 +170,16 @@ def query_matches(sql_conn, league_tag, season_tag):
                away_player_Y5, away_player_Y6,
                away_player_Y7, away_player_Y8,
                away_player_Y9, away_player_Y10,
-               away_player_Y11
+               away_player_Y11,
+               B365H, B365D, B365A,
+               BWH, BWD, BWA,
+               IWH, IWD, IWA,
+               LBH, LBD, LBA,
+               PSH, PSD, PSA,
+               WHH, WHD, WHA,
+               SJH, SJD, SJA,
+               VCH, VCD, VCA,
+               GBH, GBD, GBA
         FROM Match 
         INNER JOIN Team AS Team1 ON Team1.team_api_id = Match.away_team_api_id 
         INNER JOIN Team AS Team2 ON Team2.team_api_id = Match.home_team_api_id 
