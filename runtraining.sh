@@ -21,28 +21,24 @@ PATH_LOGFILE=$PATH_SAVED_LOGS/train_log.txt
 PATH_DB=$PROJECT_ROOT/data/database.sqlite
 
 DEVICE="cpu"
-BIG_DATASET=0
+BIG_DATASET=1
 LOGLEVEL="INFO"
-
-# hyperparameters for model
-HIDDEN_SIZE=128
-HIDDEN_LAYERS=4
-BIDIRECTIONAL=0
+EXPERIMENT=7
 
 # hyperparameters for training
-EPOCHS=200
-BATCH_SIZE=16
+EPOCHS=50
+BATCH_SIZE=8
 
-#OPTIMIZER="Adam"
-#LEARNING_RATE=0.01
+OPTIMIZER="Adam"
+LEARNING_RATE=0.001
 WEIGHT_DECAY=0.0001
 
-OPTIMIZER="SGD"
-LEARNING_RATE=0.05
+#OPTIMIZER="SGD"
+#LEARNING_RATE=0.01
 MOMENTUM=0.01
 
 # run
 EXEC=$PROJECT_ROOT/src/main.py
 
-python3 $EXEC --database $PATH_DB --log $PATH_LOGFILE --epochs $EPOCHS --batch_size $BATCH_SIZE --model_save_path $PATH_SAVED_MODELS --stats_save_path $PATH_SAVED_STATS --optimizer $OPTIMIZER --learning_rate $LEARNING_RATE --weight_decay $WEIGHT_DECAY --lstm_hidden_size $HIDDEN_SIZE --lstm_hidden_layers $HIDDEN_LAYERS --bidirectional $BIDIRECTIONAL --momentum $MOMENTUM --big_dataset $BIG_DATASET
+python3 $EXEC --database $PATH_DB --log $PATH_LOGFILE --epochs $EPOCHS --batch_size $BATCH_SIZE --model_save_path $PATH_SAVED_MODELS --stats_save_path $PATH_SAVED_STATS --optimizer $OPTIMIZER --learning_rate $LEARNING_RATE --weight_decay $WEIGHT_DECAY --momentum $MOMENTUM --big_dataset $BIG_DATASET --experiment $EXPERIMENT
 

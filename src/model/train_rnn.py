@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam, SGD
 
-from model.model import RNNtoDensePredictionNet
+from model.model import RNNPredictionNet
 from model.train_util import get_device, save_losses
 from model.confusion_matrix import ConfusionMatrix
 
@@ -32,21 +32,13 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
     saved_losses = list()
     for i, (match, result) in enumerate(train_loader):
         optimizer.zero_grad()
-
-        players_home = match["players_home"]
-        players_away = match["players_away"]
         
-        players_home_tensor = torch.stack(players_home, dim=1)
-        players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
-        players_home_tensor = players_home_tensor.to(device=device)
-
-        players_away_tensor = torch.stack(players_away, dim=1)
-        players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
-        players_away_tensor = players_away_tensor.to(device=device)
-    
         history_home = truncate(match["home_team_history"], n=WIN_LEN)
         history_away = truncate(match["away_team_history"], n=WIN_LEN)
         
+        if len(history_home) == 0 or len(history_away) == 0:
+            continue
+
         for i in range(len(history_home)):
             history_home[i] = goal_diff(history_home[i])
             history_home[i] = history_home[i].to(device=device)
@@ -55,9 +47,9 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
             history_away[i] = history_away[i].to(device=device)
 
 
-        hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device)
-        hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device)
-        pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
+        hidden1 = model.hist_enc._init_hidden(history_home[0].shape[0], device)
+        hidden2 = model.hist_enc._init_hidden(history_home[0].shape[0], device)
+        pred_result = model(history_home, history_away, hidden1, hidden2)
         
         result = result.to(dtype=torch.float32, device=device)
 
@@ -75,19 +67,12 @@ def validate(model, loss_fn, device, valid_loader, testing=False):
 
     with torch.no_grad():
         for i, (match, result) in enumerate(valid_loader):
-            players_home = match["players_home"]
-            players_away = match["players_away"]
-
-            players_home_tensor = torch.stack(players_home, dim=1)
-            players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
-            players_home_tensor = players_home_tensor.to(device=device)
-
-            players_away_tensor = torch.stack(players_away, dim=1)
-            players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
-            players_away_tensor = players_away_tensor.to(device=device)
-
             history_home = truncate(match["home_team_history"], n=WIN_LEN)
             history_away = truncate(match["away_team_history"], n=WIN_LEN)
+            
+            if len(history_home) == 0 or len(history_away) == 0:
+                continue
+
             for i in range(len(history_home)):
                 history_home[i] = goal_diff(history_home[i])
                 history_home[i] = history_home[i].to(device=device)
@@ -95,9 +80,9 @@ def validate(model, loss_fn, device, valid_loader, testing=False):
                 history_away[i] = goal_diff(history_away[i])
                 history_away[i] = history_away[i].to(device=device)
             
-            hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device=device)
-            hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device=device)
-            pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
+            hidden1 = model.hist_enc._init_hidden(history_home[0].shape[0], device)
+            hidden2 = model.hist_enc._init_hidden(history_home[0].shape[0], device)
+            pred_result = model(history_home, history_away, hidden1, hidden2)
 
             result = result.to(dtype=torch.float32, device=device)
 
@@ -128,7 +113,6 @@ def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loa
             "epoch {} | average train loss {} | average validation loss {} | validation acc {}"
             .format(epoch, avg_train_loss, avg_valid_loss, valid_acc))
 
-
         if model_save_path is not None:
             savestate = {
                     "epoch": epoch,
@@ -144,7 +128,7 @@ def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loa
         save_losses(losses, stats_save_path + "/dpn_train_stats.txt")
 
 
-def run_training_rnn_dpn(train_set, valid_set, args, model=None):
+def run_training_rnn(train_set, valid_set, args, model=None):
     train_loader = DataLoader(
         train_set, batch_size=args.batch_size, shuffle=args.shuffle)
     valid_loader = DataLoader(valid_set, batch_size=1, shuffle=False)
@@ -155,10 +139,8 @@ def run_training_rnn_dpn(train_set, valid_set, args, model=None):
         device = get_device(use_cuda=False)
     
     if model is None:
-        model = RNNtoDensePredictionNet(11*35, 1)
+        model = RNNPredictionNet(1, 128)
     
-    model.hist_enc.to(device)
-    model.dpn.to(device)
     model.to(device)
 
     if args.optimizer == "Adam":
@@ -180,7 +162,7 @@ def run_training_rnn_dpn(train_set, valid_set, args, model=None):
 
     return model
 
-def run_testing_rnn_dpn(model, test_set, args):
+def run_testing_rnn(model, test_set, args):
     test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
     if args.device == "cuda":

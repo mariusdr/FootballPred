@@ -4,79 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import logging
 
-class TeamEncoder(nn.Module):
-    """
-    Given a set of players (vectors of player stats) encode 
-    them using an LSTM model.
-    """
-    def __init__(self, input_size, hidden_size):
-        super(TeamEncoder, self).__init__()
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-
-        # player vector projection embedding
-        self.fc1 = nn.Linear(self.input_size, self.hidden_size, bias=True)
-
-        self.lstm1 = nn.LSTMCell(self.hidden_size, self.hidden_size)
-        # self.dropout1 = nn.Dropout()
-        self.lstm2 = nn.LSTMCell(self.hidden_size, self.hidden_size)
-        # self.dropout2 = nn.Dropout()
-        self.lstm3 = nn.LSTMCell(self.hidden_size, self.hidden_size)
-
-    def forward(self, player_seq):
-        h1, c1 = self._init_hidden(player_seq)
-        h2, c2 = self._init_hidden(player_seq)
-        h3, c3 = self._init_hidden(player_seq)
-
-        for x in player_seq:
-            x = F.relu(self.fc1(x))
-            h1, c1 = self.lstm1(x, (h1, c1))
-            h2, c2 = self.lstm2(h1, (h2, c2))
-            h3, c3 = self.lstm3(h2, (h3, c3))
-
-        return h3
-
-    def _init_hidden(self, seq):
-        x = seq[0]
-        batch_size, length = x.shape
-        h = torch.zeros(batch_size, self.hidden_size)
-        c = torch.zeros(batch_size, self.hidden_size)
-        return h, c
-
-
-class LSTMPredictionNet(nn.Module):
-    """
-    Given the players of two teams, encode both teams with the TeamEncoder LSTM 
-    and then decide which team is more likely to win based on their encodings.
-    """
-    def __init__(self, input_size, hidden_size):
-        super(LSTMPredictionNet, self).__init__()
-
-        self.encoder = TeamEncoder(input_size=input_size, hidden_size=hidden_size)
-        
-        self.p1 = nn.Linear(hidden_size, hidden_size) 
-        self.p2 = nn.Linear(hidden_size, hidden_size) 
-        self.p3 = nn.Linear(hidden_size, hidden_size) 
-
-        self.fc1 = nn.Linear(hidden_size, 3)
-
-    def forward(self, seq1, seq2):
-        y1 = self.encoder(seq1)
-        y2 = self.encoder(seq2)
-        
-        y1 = F.relu(self.p1(y1))
-        y1 = F.relu(self.p2(y1))
-        y1 = F.relu(self.p3(y1))
-
-        y2 = F.relu(self.p1(y2))
-        y2 = F.relu(self.p2(y2))
-        y2 = F.relu(self.p3(y2))
-
-        y = y1 - y2
-        y = F.softmax(self.fc1(y), dim=1)
-        return y
-
-
 
 class DensePredictionNet(nn.Module):
     """
@@ -88,39 +15,21 @@ class DensePredictionNet(nn.Module):
         super(DensePredictionNet, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
-    
-        base_block = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU()
-        )
-
-        # self.shared = nn.Sequential(
-            # nn.Linear(input_size, hidden_size),
-            # nn.ReLU(),
-            # base_block,
-            # base_block,
-            # base_block
-        # )
 
         self.shared = nn.Sequential(
-            nn.Conv1d(35, 128, 3),
+            nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Conv1d(128, 256, 3),
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Conv1d(256, 512, 3),
-            nn.ReLU(),
-            nn.Conv1d(512, 1024, 3),
-            nn.ReLU(), 
-            nn.Conv1d(1024, 1536, 3)
+            nn.Dropout(0.1),
         )
 
         self.fusion = nn.Sequential(
-            # nn.Linear(2*hidden_size, hidden_size),
-            nn.Linear(2*1536, hidden_size),
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            base_block,
-            base_block,
-            base_block
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.1)
         )
 
         self.prediction = nn.Sequential(
@@ -131,15 +40,28 @@ class DensePredictionNet(nn.Module):
     def forward(self, x1, x2):
         y1 = self.shared(x1)
         y2 = self.shared(x2)
-        
-        y1 = y1.view(-1, 1536)
-        y2 = y2.view(-1, 1536)
-
-        y = self.fusion(torch.cat((y1, y2), 1))
-        #y = self.fusion(torch.cat((y1 - y2, y2 - y1), 1))
-        # y = self.fusion(y1-y2) 
+        y = self.fusion( (y1 - y2) )
 
         return self.prediction(y)
+
+
+class DensePredictionNetWithOdds(nn.Module):
+    def __init__(self, player_input_size, odds_input_size, hidden_size=128):
+        super(DensePredictionNetWithOdds, self).__init__()
+        self.dpn = DensePredictionNet(player_input_size, hidden_size=hidden_size)
+
+        self.fusion = nn.Sequential(
+            nn.Linear(3 + odds_input_size, 3),
+            nn.ReLU(),
+            nn.Linear(3, 3),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x1, x2, odds):
+        yd = self.dpn(x1, x2)
+        odds[torch.isnan(odds)] = 0.0
+        y = self.fusion(torch.cat((yd, odds), dim=1))
+        return y
 
 
 class MatchHistoryEncoder(nn.Module):
@@ -147,43 +69,75 @@ class MatchHistoryEncoder(nn.Module):
         super(MatchHistoryEncoder, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.num_layers = 1
 
         self.project = nn.Sequential(
-            nn.Linear(input_size, hidden_size), 
-            nn.ReLU()
+            nn.Linear(input_size, hidden_size),
+            nn.Tanh()
         )
-        self.lstm1 = nn.LSTMCell(self.hidden_size, self.hidden_size)
-    
+
+        self.lstm = nn.LSTM(self.hidden_size, self.hidden_size, 1)
+
     def forward(self, seq, hidden):
         h, c = hidden
-        if len(seq) == 0:
-            return h
 
-        for x in seq:
-            x = self.project(x)
-            h, c = self.lstm1(x, (h, c))
-        return h
+        if len(seq) == 0:
+            return h[-1, :, :]
+
+        for i in range(len(seq)):
+            seq[i] = self.project(seq[i])
+
+        inp = torch.stack(seq, dim=0)
+
+        ys, (h, c) = self.lstm(inp, (h, c))
+        return ys[-1, :, :]
 
     def _init_hidden(self, batch_size, device):
-        h = torch.zeros(batch_size, self.hidden_size)
-        c = torch.zeros(batch_size, self.hidden_size)
+        h = torch.zeros(self.num_layers, batch_size, self.hidden_size)
+        c = torch.zeros(self.num_layers, batch_size, self.hidden_size)
         h = h.to(device=device)
         c = c.to(device=device)
         return h, c
-    
 
-class RecurrentPredictionNet(nn.Module):
-    def __init__(self, players_input_size, history_input_size, dn_hidden_size=512, rnn_hidden_size=128):
-        super(RecurrentPredictionNet, self).__init__()
+
+class RNNPredictionNet(nn.Module):
+    def __init__(self, history_input_size, rnn_hidden_size=64):
+        super(RNNPredictionNet, self).__init__()
+
+        self.hist_enc = MatchHistoryEncoder(history_input_size, rnn_hidden_size)
+
+        self.prediction = nn.Sequential(
+            nn.Linear(2*rnn_hidden_size, rnn_hidden_size),
+            nn.ReLU(),
+            nn.Linear(rnn_hidden_size, 3),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, hist1, hist2, hidden1, hidden2):
+        h1 = self.hist_enc(hist1, hidden1)
+        h2 = self.hist_enc(hist2, hidden2)
+
+        t = torch.cat((h1, h2), dim=1)
+        p = self.prediction(t)
+        return p
+
+
+class RNNtoDensePredictionNet(nn.Module):
+    def __init__(self, players_input_size, history_input_size, dn_hidden_size=128, rnn_hidden_size=32):
+        super(RNNtoDensePredictionNet, self).__init__()
 
         self.dpn = DensePredictionNet(players_input_size, dn_hidden_size)
         self.hist_enc = MatchHistoryEncoder(history_input_size, rnn_hidden_size)
 
-        self.prediction = nn.Sequential(
-            nn.Linear(dn_hidden_size + 2 * rnn_hidden_size, dn_hidden_size),
+        self.fusion = nn.Sequential(
+            nn.Linear(2*rnn_hidden_size + dn_hidden_size, dn_hidden_size),
             nn.ReLU(),
             nn.Linear(dn_hidden_size, dn_hidden_size),
             nn.ReLU(),
+            nn.Dropout(0.1)
+        )
+
+        self.prediction = nn.Sequential(
             nn.Linear(dn_hidden_size, 3),
             nn.Softmax(dim=1)
         )
@@ -191,81 +145,38 @@ class RecurrentPredictionNet(nn.Module):
     def forward(self, x1, x2, hist1, hist2, hidden1, hidden2):
         y1 = self.dpn.shared(x1)
         y2 = self.dpn.shared(x2)
-        yf = self.dpn.fusion(y1-y2) 
-        
+        yf = self.dpn.fusion(y1-y2)
         h1 = self.hist_enc(hist1, hidden1)
         h2 = self.hist_enc(hist2, hidden2)
 
-        y = torch.cat((h1, yf, h2), 1)
-        return self.prediction(y)
+        t = torch.cat((h1, yf, h2), dim=1)
+        y = self.fusion(t)
+
+        p = self.prediction(y)
+        return p
 
 
+class RNNtoDensePredictionNetWithOdds(nn.Module):
+    def __init__(self, player_input_size, history_input_size, odds_input_size, dn_hidden_size=128, rnn_hidden_size=32):
+        super(RNNtoDensePredictionNetWithOdds, self).__init__()
+        self.rnn = RNNtoDensePredictionNet(
+            player_input_size,
+            history_input_size,
+            dn_hidden_size=dn_hidden_size,
+            rnn_hidden_size=rnn_hidden_size)
 
-class DenseCompNet(nn.Module):
-    """
-    Instead of computing a probability of the game outcome (i.e. home win / away win / draw)
-    this one tries to compute which team is stronger, i.e. supposed to win, without making hard 
-    decisions. 
-
-    Football has a heavy home-field bias, i.e. Bundesliga 07/08 had about 46% home wins, 
-    so networks with home win / away win / draw output can just "learn" to put alot of 
-    probability mass on home win and get good results w.o. really learning something ...
-    """
-    def __init__(self, input_size, hidden_size=512):
-        super(DenseCompNet, self).__init__()
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        
-        base_block = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(p=0.10)
-        )
-
-        self.shared = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            base_block,
-            base_block,
-            base_block
-        )
-
+        self.hist_enc = self.rnn.hist_enc
         self.fusion = nn.Sequential(
-            nn.Linear(2*hidden_size, hidden_size),
+            nn.Linear(3 + odds_input_size, 3),
             nn.ReLU(),
-            base_block
+            nn.Linear(3, 3),
+            nn.Softmax(dim=1)
         )
 
-        self.prediction = nn.Sequential(
-            nn.Linear(hidden_size, 2)
-        )
-
-    def forward(self, x1, x2):
-        y1 = self.shared(x1)
-        y2 = self.shared(x2)
-
-        y = self.fusion(torch.cat((y1 - y2, y2 - y1), 1))
-        return self.prediction(y)
-
-
-class LSTMCompNet(nn.Module):
-    """
-    Same idea as above DenseCompNet but again with LSTMs instead of dense nets.
-    """
-    def __init__(self, input_size, hidden_size):
-        super(LSTMCompNet, self).__init__()
-
-        self.encoder = TeamEncoder(input_size=input_size, hidden_size=256)
-
-        self.fc1 = nn.Linear(2 * hidden_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, 3)
-
-    def forward(self, seq1, seq2):
-        y1 = self.encoder(seq1)
-        y2 = self.encoder(seq2)
-
-        y = torch.cat((y1, y2), 1)
-        y = F.relu(self.fc1(y))
-        y = F.relu(self.fc2(y))
+    def forward(self, x1, x2, hist1, hist2, hidden1, hidden2, odds):
+        yd = self.rnn(x1, x2, hist1, hist2, hidden1, hidden2)
+        odds[torch.isnan(odds)] = 0.0
+        y = self.fusion(torch.cat((yd, odds), dim=1))
         return y
+
 

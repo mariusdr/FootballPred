@@ -3,12 +3,39 @@ import logging
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam, SGD
+from torch.utils.data import Subset
 
-from model.model import RNNtoDensePredictionNet
+from model.model import RNNtoDensePredictionNetWithOdds
 from model.train_util import get_device, save_losses
 from model.confusion_matrix import ConfusionMatrix
 
+PROVIDERS = ["B365", "BW", "IW", "LB", "PS", "WH", "SJ", "VC", "GB"]
+BLACKLIST = ["PS", "SJ", "VC", "GB"]
 WIN_LEN = -1
+
+def get_odd_tensor(match, providers=PROVIDERS, blacklist=BLACKLIST):
+    tar = list(set(providers) - set(blacklist)) 
+
+    hos = list()
+    drs = list()
+    aws = list()
+
+    for p in tar:
+        homeodds = match[p+"H"]
+        drawodds = match[p+"D"]
+        awayodds = match[p+"A"]
+        
+        hos.append(homeodds)
+        drs.append(drawodds)
+        aws.append(awayodds)
+
+    h = torch.stack(hos, dim=1) 
+    d = torch.stack(drs, dim=1)
+    a = torch.stack(aws, dim=1)
+    
+    t = torch.cat((h, d, a), dim=1)
+    t = 1.0 / t
+    return t
 
 def goal_diff(batch):
     bs, _ = batch.shape
@@ -35,15 +62,19 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
 
         players_home = match["players_home"]
         players_away = match["players_away"]
-        
-        players_home_tensor = torch.stack(players_home, dim=1)
-        players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
-        players_home_tensor = players_home_tensor.to(device=device)
 
+        players_home_tensor = torch.stack(players_home, dim=1) 
         players_away_tensor = torch.stack(players_away, dim=1)
+        
+        players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
         players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
+
+        players_home_tensor = players_home_tensor.to(device=device)
         players_away_tensor = players_away_tensor.to(device=device)
-    
+        
+        odds_tensor = get_odd_tensor(match)
+        odds_tensor = odds_tensor.to(device=device, dtype=torch.float32)
+        
         history_home = truncate(match["home_team_history"], n=WIN_LEN)
         history_away = truncate(match["away_team_history"], n=WIN_LEN)
         
@@ -54,11 +85,10 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
             history_away[i] = goal_diff(history_away[i])
             history_away[i] = history_away[i].to(device=device)
 
-
         hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device)
         hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device)
-        pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
         
+        pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2, odds_tensor)
         result = result.to(dtype=torch.float32, device=device)
 
         error = loss_fn(pred_result, result)
@@ -66,44 +96,51 @@ def train_one_epoch(model, optimizer, loss_fn, device, train_loader, valid_loade
         optimizer.step()
 
         saved_losses.append(error.item())
-    
+
     return saved_losses
+
 
 def validate(model, loss_fn, device, valid_loader, testing=False):
     losses = list()
-    cfm = ConfusionMatrix() 
+    cfm = ConfusionMatrix()
 
     with torch.no_grad():
         for i, (match, result) in enumerate(valid_loader):
             players_home = match["players_home"]
             players_away = match["players_away"]
 
-            players_home_tensor = torch.stack(players_home, dim=1)
-            players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
+            players_home_tensor = torch.stack(players_home, dim=1) 
+            players_away_tensor = torch.stack(players_away, dim=1) 
+
             players_home_tensor = players_home_tensor.to(device=device)
-
-            players_away_tensor = torch.stack(players_away, dim=1)
-            players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
             players_away_tensor = players_away_tensor.to(device=device)
-
+            
+            players_home_tensor = players_home_tensor.view(players_home_tensor.shape[0], -1)
+            players_away_tensor = players_away_tensor.view(players_away_tensor.shape[0], -1)
+            
+            odds_tensor = get_odd_tensor(match)
+            odds_tensor = odds_tensor.to(device=device, dtype=torch.float32)
+            
             history_home = truncate(match["home_team_history"], n=WIN_LEN)
             history_away = truncate(match["away_team_history"], n=WIN_LEN)
+        
             for i in range(len(history_home)):
                 history_home[i] = goal_diff(history_home[i])
                 history_home[i] = history_home[i].to(device=device)
             for i in range(len(history_away)):
                 history_away[i] = goal_diff(history_away[i])
                 history_away[i] = history_away[i].to(device=device)
-            
-            hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device=device)
-            hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device=device)
-            pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
 
+            hidden1 = model.hist_enc._init_hidden(players_home_tensor.shape[0], device)
+            hidden2 = model.hist_enc._init_hidden(players_away_tensor.shape[0], device)
+        
+            pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2, odds_tensor)
             result = result.to(dtype=torch.float32, device=device)
-
-            error = loss_fn(pred_result, result)
-            losses.append(error.item())
-
+            
+            if not testing:
+                error = loss_fn(pred_result, result)
+                losses.append(error.item())
+            
             _, ridx = torch.max(result, 1)
             _, pidx = torch.max(pred_result, 1)
             
@@ -144,7 +181,51 @@ def train(model, optimizer, loss_fn, device, num_epochs, train_loader, valid_loa
         save_losses(losses, stats_save_path + "/dpn_train_stats.txt")
 
 
-def run_training_rnn_dpn(train_set, valid_set, args, model=None):
+def rem_odd_provider(dataset, blacklist=BLACKLIST):
+    """
+    Remove odd providers that have to many Nones ...
+    """
+    for match, _ in dataset:
+        for p in blacklist:
+            match[p+"H"] = 0.0
+            match[p+"D"] = 0.0
+            match[p+"A"] = 0.0
+
+def fix_ds(dataset, providers=PROVIDERS):
+    """
+    Removes samples from the dataset that has None as a Odds value
+    """
+    rem_odd_provider(dataset)
+    indices = list()
+    dropped_by_provider = dict()
+
+    for i, (match, _) in enumerate(dataset):
+        has_none = False
+        for p in providers:
+            homeodds = match[p+"H"]
+            drawodds = match[p+"D"]
+            awayodds = match[p+"A"]
+
+            if homeodds is None or drawodds is None or awayodds is None:
+                if p not in dropped_by_provider: 
+                    dropped_by_provider[p] = 0
+
+                dropped_by_provider[p] += 1
+                has_none = True
+        
+        if not has_none:
+            indices.append(i)
+
+    subset = Subset(dataset, indices)
+    logging.info("length before dropping None odds: {} / length after: {}".format(len(dataset), len(subset)))
+    logging.info("dropped by odds provider {}".format(dropped_by_provider)) 
+    return subset
+
+
+def run_training_rnn_dpn_odds(train_set, valid_set, args, model = None):
+    train_set = fix_ds(train_set)
+    valid_set = fix_ds(valid_set)
+
     train_loader = DataLoader(
         train_set, batch_size=args.batch_size, shuffle=args.shuffle)
     valid_loader = DataLoader(valid_set, batch_size=1, shuffle=False)
@@ -155,10 +236,9 @@ def run_training_rnn_dpn(train_set, valid_set, args, model=None):
         device = get_device(use_cuda=False)
     
     if model is None:
-        model = RNNtoDensePredictionNet(11*35, 1)
-    
-    model.hist_enc.to(device)
-    model.dpn.to(device)
+        n = len(list(set(PROVIDERS) - set(BLACKLIST)))
+        model = RNNtoDensePredictionNetWithOdds(11*35, 1, n*3)
+
     model.to(device)
 
     if args.optimizer == "Adam":
@@ -180,7 +260,9 @@ def run_training_rnn_dpn(train_set, valid_set, args, model=None):
 
     return model
 
-def run_testing_rnn_dpn(model, test_set, args):
+def run_testing_rnn_dpn_odds(model, test_set, args):
+    test_set = fix_ds(test_set)
+
     test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
     if args.device == "cuda":
@@ -191,4 +273,6 @@ def run_testing_rnn_dpn(model, test_set, args):
     _, cfm = validate(model, None, device, test_loader, testing=True)
     logging.info("testing accuracy: {}".format(cfm.get_acc()))
     logging.info("testing confusion matrix: \n{}".format(cfm))
+    
+
 

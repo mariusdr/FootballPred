@@ -6,3 +6,4 @@ runscript.sh
 runtraining.sh
 *.pkl
 */__pycache__/*
+pickles/*

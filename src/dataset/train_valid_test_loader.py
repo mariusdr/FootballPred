@@ -112,24 +112,25 @@ TEST_SEASONS = [(LeagueTag.FRA, SeasonTag.S09_10),
                 (LeagueTag.FRA, SeasonTag.S10_11),
                 (LeagueTag.POR, SeasonTag.S13_14)]
 
-# SMALL_TRAIN_SEASONS = [(LeagueTag.NET, SeasonTag.S14_15),
-                       # (LeagueTag.SPA, SeasonTag.S08_09),
-                       # (LeagueTag.NET, SeasonTag.S13_14),
-                       # (LeagueTag.SCO, SeasonTag.S12_13),
-                       # (LeagueTag.SCO, SeasonTag.S15_16),
-                       # (LeagueTag.NET, SeasonTag.S10_11),
-                       # (LeagueTag.BEL, SeasonTag.S15_16),
-                       # (LeagueTag.ITA, SeasonTag.S08_09),
-                       # (LeagueTag.ENG, SeasonTag.S09_10),
-                       # (LeagueTag.BEL, SeasonTag.S09_10)]
+SMALL_TRAIN_SEASONS = [(LeagueTag.NET, SeasonTag.S14_15),
+                       (LeagueTag.SPA, SeasonTag.S08_09),
+                       (LeagueTag.NET, SeasonTag.S13_14),
+                       (LeagueTag.SCO, SeasonTag.S12_13),
+                       (LeagueTag.SCO, SeasonTag.S15_16),
+                       (LeagueTag.NET, SeasonTag.S10_11),
+                       (LeagueTag.BEL, SeasonTag.S15_16),
+                       (LeagueTag.ITA, SeasonTag.S08_09),
+                       (LeagueTag.ENG, SeasonTag.S09_10),
+                       (LeagueTag.BEL, SeasonTag.S09_10)]
 
-SMALL_TRAIN_SEASONS = [(LeagueTag.NET, SeasonTag.S14_15)]
 
-SMALL_VALID_SEASONS = [(LeagueTag.SCO, SeasonTag.S13_14)]
-                 # (LeagueTag.SWI, SeasonTag.S10_11),
-                 # (LeagueTag.POR, SeasonTag.S11_12)]
+SMALL_VALID_SEASONS = [(LeagueTag.SCO, SeasonTag.S13_14),
+                 (LeagueTag.SWI, SeasonTag.S10_11),
+                 (LeagueTag.POR, SeasonTag.S11_12)]
 
-SMALL_TEST_SEASONS = [(LeagueTag.FRA, SeasonTag.S09_10)]
+SMALL_TEST_SEASONS = [(LeagueTag.FRA, SeasonTag.S09_10),
+                (LeagueTag.GER, SeasonTag.S08_09),
+                (LeagueTag.BEL, SeasonTag.S12_13)]
 
 
 def make_dataset(sql_path,
@@ -146,7 +147,8 @@ def make_dataset(sql_path,
                 league_tag,
                 season_tag,
                 slice_size=ts_size,
-                undersample_probs=undersample_probs)
+                undersample_probs=undersample_probs,
+                load_odds=with_odds)
         else:
             d = SingleSeasonSingleLeague(
                 sql_path,
@@ -157,22 +159,24 @@ def make_dataset(sql_path,
     return data.ConcatDataset(datasets)
 
 
-def make_train_set(sql_path, undersample_probs=(1.0, 1.0, 1.0), use_ts=False, ts_size=30):
+def make_train_set(sql_path, undersample_probs=(1.0, 1.0, 1.0), use_ts=False, ts_size=30, with_odds=False):
     return make_dataset(
         sql_path,
         TRAIN_SEASONS,
         undersample_probs=undersample_probs,
         use_ts=use_ts,
-        ts_size=ts_size)
+        ts_size=ts_size,
+        with_odds=with_odds)
 
 
-def make_valid_set(sql_path, undersample_probs=(1.0, 1.0, 1.0), use_ts=False, ts_size=30):
+def make_valid_set(sql_path, undersample_probs=(1.0, 1.0, 1.0), use_ts=False, ts_size=30, with_odds=False):
     return make_dataset(
         sql_path,
         VALID_SEASONS,
         undersample_probs=undersample_probs,
         use_ts=use_ts,
-        ts_size=ts_size)
+        ts_size=ts_size,
+        with_odds=with_odds)
 
 
 def make_test_set(sql_path, undersample_probs=(1.0, 1.0, 1.0), use_ts=False, ts_size=30, with_odds=False):
@@ -188,25 +192,27 @@ def make_test_set(sql_path, undersample_probs=(1.0, 1.0, 1.0), use_ts=False, ts_
 def make_small_train_set(sql_path,
                          undersample_probs=(1.0, 1.0, 1.0),
                          use_ts=False,
-                         ts_size=30):
+                         ts_size=30, with_odds=False):
     return make_dataset(
         sql_path,
         SMALL_TRAIN_SEASONS,
         undersample_probs=undersample_probs,
         use_ts=use_ts,
-        ts_size=ts_size)
+        ts_size=ts_size,
+        with_odds=with_odds)
 
 
 def make_small_valid_set(sql_path,
                          undersample_probs=(1.0, 1.0, 1.0),
                          use_ts=False,
-                         ts_size=30):
+                         ts_size=30, with_odds=False):
     return make_dataset(
         sql_path,
         SMALL_VALID_SEASONS,
         undersample_probs=undersample_probs,
         use_ts=use_ts,
-        ts_size=ts_size)
+        ts_size=ts_size,
+        with_odds=with_odds)
 
 
 def make_small_test_set(sql_path,

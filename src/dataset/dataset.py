@@ -325,9 +325,9 @@ class SingleSeasonSingleLeagueTimeSlices(data.Dataset):
     then we also return less than @slice_size matches.
     """
 
-    def __init__(self, sqpath, league_tag, season_tag, slice_size, undersample_probs=(1.0, 1.0, 1.0), only_results=True):
+    def __init__(self, sqpath, league_tag, season_tag, slice_size, undersample_probs=(1.0, 1.0, 1.0), only_results=True, load_odds=False):
         self.slice_size = slice_size
-        self.samples = SingleSeasonSingleLeague(sqpath, league_tag, season_tag, undersample_probs=undersample_probs)
+        self.samples = SingleSeasonSingleLeague(sqpath, league_tag, season_tag, undersample_probs=undersample_probs, load_odds=load_odds)
         self.only_results = only_results
         self.time_slices = list()
         self._create_slices()

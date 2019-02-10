@@ -1,5 +1,6 @@
 import torch
 import logging
+import numpy as np
 
 def get_device(use_cuda):
     if use_cuda and torch.cuda.is_available():
