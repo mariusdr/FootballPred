@@ -100,9 +100,10 @@ def validate(model, loss_fn, device, valid_loader, testing=False):
             pred_result = model(players_home_tensor, players_away_tensor, history_home, history_away, hidden1, hidden2)
 
             result = result.to(dtype=torch.float32, device=device)
-
-            error = loss_fn(pred_result, result)
-            losses.append(error.item())
+            
+            if not testing:
+                error = loss_fn(pred_result, result)
+                losses.append(error.item())
 
             _, ridx = torch.max(result, 1)
             _, pidx = torch.max(pred_result, 1)

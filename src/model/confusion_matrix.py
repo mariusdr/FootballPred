@@ -21,6 +21,20 @@ class ConfusionMatrix(object):
                    m[2, 0], m[2, 1], m[2, 2])
 
         return s
+    
+    def print_data(self):
+        m = self.data.astype(np.int32)
+
+        s = """
+                  pred H  pred D  pred A
+           true H   {}  {}  {}
+           true D   {}  {}  {}
+           true A   {}  {}  {}                   
+        """.format(m[0, 0], m[0, 1], m[0, 2], m[1, 0], m[1, 1], m[1, 2],
+                   m[2, 0], m[2, 1], m[2, 2])
+
+        return s
+
 
     def get_acc(self):
         m = self.data / np.sum(self.data)

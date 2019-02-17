@@ -23,7 +23,7 @@ PATH_DB=$PROJECT_ROOT/data/database.sqlite
 DEVICE="cpu"
 BIG_DATASET=1
 LOGLEVEL="INFO"
-EXPERIMENT=7
+EXPERIMENT=5
 
 # hyperparameters for training
 EPOCHS=50

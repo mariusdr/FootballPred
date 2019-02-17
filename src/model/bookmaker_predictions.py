@@ -35,6 +35,8 @@ class BookkeeperPredictor(object):
     def print_stats(self):
         logging.info("confusion matrix for bookkeeper {}".format(self.id_string))
         logging.info(self.cfm) 
+        logging.info("absolute num. of predictions:")
+        logging.info(self.cfm.print_data())
         logging.info("acc: {} ".format(self.cfm.get_acc()))
         logging.info("(bookkeeper has {} nan entries)".format(self.incomplete))
 

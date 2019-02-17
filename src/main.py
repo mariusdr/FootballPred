@@ -44,13 +44,14 @@ args = parser.parse_args()
 
 def experiment1():
     if bool(args.big_dataset):
-        train_set = deserialize("pickles/train_set.pkl")
-        valid_set = deserialize("pickles/valid_set.pkl")
-        test_set =  deserialize("pickles/test_set.pkl")
+        train_set = deserialize("pickles/train_set_ts.pkl")
+        valid_set = deserialize("pickles/valid_set_ts.pkl")
+        test_set =  deserialize("pickles/test_set_ts.pkl")
+
     else:
-        train_set = deserialize("pickles/small_train_set_us.pkl")
-        valid_set = deserialize("pickles/small_valid_set.pkl")
-        test_set =  deserialize("pickles/small_test_set.pkl")
+        train_set = deserialize("pickles/small_train_set_ts.pkl")
+        valid_set = deserialize("pickles/small_valid_set_ts.pkl")
+        test_set =  deserialize("pickles/small_test_set_ts.pkl")
 
     model = run_training_dpn(train_set, valid_set, args)
     run_testing_dpn(model, test_set, args)
@@ -59,12 +60,12 @@ def experiment1():
 def experiment2():
     if bool(args.big_dataset):
         train_set = deserialize("pickles/train_set_us.pkl")
-        valid_set = deserialize("pickles/valid_set.pkl")
-        test_set =  deserialize("pickles/test_set.pkl")
+        valid_set = deserialize("pickles/valid_set_ts.pkl")
+        test_set =  deserialize("pickles/test_set_ts.pkl")
     else:
         train_set = deserialize("pickles/small_train_set_us.pkl")
-        valid_set = deserialize("pickles/small_valid_set.pkl")
-        test_set =  deserialize("pickles/small_test_set.pkl")
+        valid_set = deserialize("pickles/small_valid_set_ts.pkl")
+        test_set =  deserialize("pickles/small_test_set_ts.pkl")
 
     model = run_training_dpn(train_set, valid_set, args)
     run_testing_dpn(model, test_set, args)
@@ -105,6 +106,8 @@ def experiment4():
 def experiment5():
     if bool(args.big_dataset):
         test_set =  deserialize("pickles/test_set_ts_odds.pkl")
+        # test_set =  deserialize("pickles/train_set_ts_odds.pkl")
+        # test_set =  deserialize("pickles/train_set_ts_odds.pkl")
 
     else:
         test_set =  deserialize("pickles/small_test_set_ts_odds.pkl")
@@ -113,14 +116,14 @@ def experiment5():
 
 def experiment6():
     if bool(args.big_dataset):
-        train_set = deserialize("pickles/train_set_odds.pkl")
-        valid_set = deserialize("pickles/valid_set_odds.pkl")
-        test_set =  deserialize("pickles/test_set_odds.pkl")
+        train_set = deserialize("pickles/train_set_ts_odds.pkl")
+        valid_set = deserialize("pickles/valid_set_ts_odds.pkl")
+        test_set =  deserialize("pickles/test_set_ts_odds.pkl")
 
     else:
-        train_set = deserialize("pickles/small_train_set_odds.pkl")
-        valid_set = deserialize("pickles/small_valid_set_odds.pkl")
-        test_set =  deserialize("pickles/small_test_set_odds.pkl")
+        train_set = deserialize("pickles/small_train_set_ts_odds.pkl")
+        valid_set = deserialize("pickles/small_valid_set_ts_odds.pkl")
+        test_set =  deserialize("pickles/small_test_set_ts_odds.pkl")
 
     model = run_training_dpn_odds(train_set, valid_set, args)
     run_testing_dpn_odds(model, test_set, args)
