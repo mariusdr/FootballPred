@@ -39,39 +39,49 @@ foobar
 
 %
 \section{Introduction}
+In the last few years, neural networks became increasingly more popular and were applied to a wide range of problems in different fields, e.g. in computer vision, natural language processing or speech recognition. In this project we studied the application of neural networks to a more unusual task, namely to predict the outcome of football matches. More precisely, given the data of two football teams we had to predict the outcome of a match between them, i.e. either predict the winner or predict if the game ends in a draw. \\
+For development we used the \emph{European Soccer Database} \cite{1} which contains more than 25.000 professional football matches and statistics for 299 teams and their associated players collected over multiple seasons from various European soccer leagues like the German Bundesliga, the English Premier League and the Spanish Primera División. \\
+For this project, we developed two neural network models: A feed-forward model and a recurrent neural network (RNN) model. We compare their performance against bookmaker predictions on the same matches. \\
+This report is organized as follows: Section \ref{data} describes the structure of our dataset, the features we used as input for our networks and our data loading procedure. Section \ref{models} introduces our  models and their training procedures. Section \ref{experiments} describes our experimental setup and presents our results. We conclude our work in Section \ref{conclusion}.
 
 
-\section{Related Work}
-
-\section{Data}
-
-
-\section{Models}
+\section{Related Work} \label{relatedwork}
+% do we even have 'related work'?
 
 
+\section{Data} \label{data}
 
 
-\section{Experiments}
-
-
-\section{Conclusion}
+\section{Models} \label{models}
 
 
 
 
-%
-%\bibliographystyle{IEEEtran}
-%\begin{thebibliography}{10}
-%%\bibitem[1]{ES1} Smith, J. O. and Abel, J. S., 
-%%``Bark and {ERB} Bilinear Transforms'', 
-%%IEEE Trans. Speech and Audio Proc., 7(6):697--708, 1999.  
-%%\bibitem[2]{ES2} Lee, K.-F., Automatic Speech Recognition: 
-%%The Development of the 
-%%SPHINX SYSTEM, Kluwer Academic Publishers, Boston, 1989.
-%%\bibitem[3]{ES3} Rudnicky, A. I., Polifroni, Thayer, E. H.,
-%% and Brennan, R. A.  
-%%"Interactive problem solving with speech", J. Acoust. Soc. Amer., 
-%%Vol. 84, 1988, p S213(A).
-%\end{thebibliography}
+\section{Experiments} \label{experiments}
+\subsection{Setup}
+
+
+
+\section{Conclusion} \label{conclusion}
+
+
+
+
+
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{10}
+\bibitem[1]{ESDB} Hugo Mathien, European Soccer Database (Version 10), Retrieved from https://www.kaggle.com/hugomathien/soccer
+
+%\bibitem[1]{ES1} Smith, J. O. and Abel, J. S., 
+%``Bark and {ERB} Bilinear Transforms'', 
+%IEEE Trans. Speech and Audio Proc., 7(6):697--708, 1999.  
+%\bibitem[2]{ES2} Lee, K.-F., Automatic Speech Recognition: 
+%The Development of the 
+%SPHINX SYSTEM, Kluwer Academic Publishers, Boston, 1989.
+%\bibitem[3]{ES3} Rudnicky, A. I., Polifroni, Thayer, E. H.,
+% and Brennan, R. A.  
+%"Interactive problem solving with speech", J. Acoust. Soc. Amer., 
+%Vol. 84, 1988, p S213(A).
+\end{thebibliography}
 \end{document}
 
