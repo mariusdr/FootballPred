@@ -52,25 +52,228 @@ This report is organized as follows: Section \ref{data} describes the structure 
 \section{Data} \label{data}
 
 
-\section{Models} \label{models}
+\section{Method} \label{models}
+We developed two models that are based on the \textit{Siamese Network} approach \cite{Bromley94} which is extensively used for tasks that require to find similarities between two inputs, a recent example for this is \textit{Facenet} \cite{Schroff15} a face recognition model. In our case we are given the data of two football teams and need to predict the outcome of a match between them, basically a comparison task. Teams are represented as a matrix $T \in \mathbb{R}^{11 \times m}$ where the row $T_i$ contains the attributes of the $i$-th player of a given team. We denote the \textit{away team} with $T^a$ and the \textit{home team} with $T^h$. Note that we only consider the eleven starting players for each team as we don't have data for substitute players. A description of the player attributes is given in Section \ref{data}. 
+
+\begin{figure} 
+\includegraphics[scale=0.30]{img/Siamese1.png}
+\caption{First model for match outcome prediction.}
+\label{fig:ffnet}
+\end{figure}
 
 
+\subsection{Fully Connected Model}
+Our first model consists of two fully connected neural networks as depicted in Figure \ref{fig:ffnet}. The first network learns an embedding $f(T) \in \mathbb{R}^d $ for the team data. We use this network for both teams during a forward pass, which means that the weights for the inputs are shared during the backwards pass. Given the features $f(T^h)$ and $f(T^a)$ for the home and away team we use the difference $f(T^h)-f(T^a)$ as the input for the second network, which predicts the probabilities $p_h, p_d, p_a$ for home win, draw and away win using the Softmax activation function in the output layer. For the inner layers we use the ReLU (rectified linear unit) activation function. We also use \textit{Dropout} \cite{Dropout14} layers with probability $0.1$ in both networks. The layers for the team embedding are depicted in Table \ref{tab:flayer} and the layers for the prediction network are depicted in Table \ref{tab:player}. 
+ 
+\begin{table}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+\textbf{Layer} & \textbf{Input Size} & \textbf{Output Size} & \textbf{Activation} \\ 
+\hline 	
+\hline
+linear1 & $11 \times 35=385$ & $128$ & ReLU \\ 
+\hline 
+linear2 & $128$ & $128$ & ReLU \\ 
+\hline 
+dropout1 & $128$ & $128$ &  \\ 
+\hline 
+\end{tabular} 
+\caption{Feature layers for the FC model.}
+\label{tab:flayer}
+\end{table}
+
+\begin{table}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+\textbf{Layer} & \textbf{Input Size} & \textbf{Output Size} & \textbf{Activation} \\ 
+\hline 	
+\hline
+linear1 & $128$ & $128$ & ReLU \\ 
+\hline 
+linear2 & $128$ & $128$ & ReLU \\ 
+\hline 
+dropout1 & $128$ & $128$ &  \\ 
+\hline 
+linear2 & $128$ & $3$ & Softmax \\ 
+\hline
+\end{tabular} 
+\caption{Prediction layers for the FC model.}
+\label{tab:player}
+\end{table}
+
+\subsection{Match Histories}
+Our first model only considered data from a single game but football teams play on a weekly basis during a season and performance over the last couple of games may be predictive of performance in future matches because of influences that are hard to measure numerically e.g. how competent a teams coach is in picking strategies or how good a team fits together on an interpersonal basis. For our second model we want to consider this additional information for both teams during the prediction but we first need to extract this from the dataset. \\
+For the performance of a team we consider the goal differences of past matches from the teams point of view, e.g. if Team A wins $3$ to $1$ against Team B then the goal difference from Team As' point of view is $2$ whereas the difference from Team Bs' point of view is $-2$. Thus the goal difference of a draw is $0$ for both teams. Given a team and a date we call the series of goal differences of this teams past matches in this season up to the given date its \textit{match history}. For example a team that played three matches with outcomes $3$ to $1$, $2$ to $3$ and $0$ to $0$ has the match history $(2, -1, 0)$. Note that we only consider games that were played in the same season, we don't go over seasons boundaries as professional football teams often change considerably during the off season (buying and selling players, new coaches etc.). We also want to emphasise here that match histories have different lengths depending on their end date, e.g. at the first matchday of a new season no team has a history yet while on the last matchday each team has a full season worth of games in its history (in most leagues around $30$ games). Thus the length of the match history is variable during the seasons and we need to consider that while building our model. \\
+We can construct match histories efficiently using only one pass over our dataset if all matches in a season are ordered by their match dates (ordering between seasons does not matter). We iterate over the matches by ascending date and create a buffer data structure, e.g. a Python deque,  for each 'new' team we encounter, this buffer holds all the row indices of the past matches of its team in the dataset. For each match entry we add the current buffer content of both teams as a new column. Basically, each match now contains an list of dataset indices that reference the past matches (other rows in the dataset) of both teams. We implemented this using the PyTorch dataset class but this could also be implemented with other frameworks, for example using Pandas DataFrames.
+
+
+\begin{figure} 
+\includegraphics[scale=0.28]{img/Siamese2.png}
+\caption{Second model for match outcome prediction.}
+\label{fig:rnn}
+\end{figure}
+
+
+\subsection{RNN Model}
+For our second model we want to use the match histories as additional information. As we already described that match histories have different lengths at different match dates a recurrent neural networks seems fitting for use as a match history encoder. We again use the player data $T^a$ and $T^h$ in the same way as in the fully connected model, that is we use the network described in Table \ref{tab:flayer} to learn embeddings $f(T^a)$, $f(T^h)$ for the away and home team and input the difference $f(T^h) - f(T^a)$ into the prediction network. For the recurrent neural network we use a LSTM \cite{LSTM97} with one hidden layer with $32$ neurons. As a goal difference is a single number we use a Linear Layer with shape $1 \times 32$ and Tanh activation before the LSTM. We feed the series of goal differences completely into the LSTM and use its last hidden state as an additional input for our prediction network. Note that there are matches for which the match history is empty, i.e. at the start of a season, in these cases we don't use the LSTM at all and only use the predictions from the fully connected model.\\
+Similar to the fully connected network we use same LSTM (but reinitialize its hidden state after the first team) to encode the match histories of the teams which means that its weights are also shared for both inputs during training. \\
+The input of the prediction network is the difference between the team embeddings $f(T^h) - f(T^a)$ concatenated with the last hidden states of the LSTMs for both match histories. The prediction network is the same as in the first model (Table \ref{tab:player}) but with a larger input size ($192$ instead of $128$) in its first layer to account for the additional inputs. 
 
 
 \section{Experiments} \label{experiments}
 \subsection{Setup}
+We implemented our models using the PyTorch framework \cite{PyTorch} and trained them on Googles \textit{Colab}\footnote{https://research.google.com/colaboratory} service which provides free access to a Nvidia K80 GPU. Our training data was found on Kaggle as described in Section \ref{data}. 
+
+
+\begin{figure} 
+\includegraphics[scale=0.40]{img/bmacc.png}
+\caption{Prediction accuracy for different bookmakers in our dataset as evaluated on the test set. Average accuracy for bookmakers is 0.513.}
+\label{fig:bmacc}
+\end{figure}
+
+\subsection{Bookmaker Predictions as Baseline}
+For nearly every match in our dataset \textit{odds} from various bookmakers, online services where people can bet on the outcome of football matches, were included. Bookmakers denote odds $o_h, o_a, o_d \in \mathbb{R}_{\geq 1}$ for each possible outcome, i.e. home win $o_h$, away win $o_a$ and draw $o_d$ which can basically be seen as multipliers for the returns on successful bets, e.g. betting 10 euro on an outcome with 1.5 odds returns 15 euros on a win. To make a profit or break even a bookmaker needs to set the odds in a way that reflects the outcome of a match, e.g. the most likely outcome should have the lowest odds and thus the lowest payout from the bookmakers point of view and so on. Therefore the odds actually represent the bookmakers predictions w.r.t. the match outcome and in theory there is even an inverse relationship between probabilities and odds, $p_x = 1/o_x$, but in practice bookmakers actually decrease the odds to add a profit margin for themselves, a process called \textit{fixing the odds}. A more thorough review of bookmaker mathematics is out of the scope for this document, even though we can still assume that the odds in our database reflect which outcome the bookmakers believed to be most likely, as they would probably still assure that this one is the most "unattractive" to bet on. \\
+For these reasons we use the predictions given by the odds as baseline to compare our models against. We evaluated their predictions on the matches in our test set using an ensemble of nine different bookmakers. Their results are shown in Figure \ref{fig:bmacc}, the mean prediction accuracy is 0.513.
+
+\begin{figure} 
+\includegraphics[scale=0.35]{img/experiment1.png}
+\caption{Training loss for the fully connected model. }
+\label{fig:fcloss}
+\end{figure}
+\begin{figure} 
+\includegraphics[scale=0.35]{img/acc1.png}
+\caption{Validation accuracy for the fully connected model. }
+\label{fig:fcacc}
+\end{figure}
+
+\begin{figure} 
+\includegraphics[scale=0.35]{img/loss2.png}
+\caption{Training loss for the recurrent model. }
+\label{fig:rnnloss}
+\end{figure}
+\begin{figure} 
+\includegraphics[scale=0.35]{img/acc_exp2.png}
+\caption{Validation accuracy for the recurrent model. }
+\label{fig:rnnacc}
+\end{figure}
 
 
 
-\section{Conclusion} \label{conclusion}
+\subsection{Training}
+We train both of our models with the cross entropy loss function. Our fully connected model was trained with the Adam \cite{Adam} optimizer with a learning rate of $0.0025$ and a batch size of $1024$. The training loss and validation accuracies for this models are shown in Figure \ref{fig:fcloss} and \ref{fig:fcacc}. We see that this models tends to overfit quickly even with small learning rates so we only trained it for five epochs for our evaluation. \\
+For our recurrent model we only batch sizes of $32$ matches as the variable length match histories we consider here have to either be padded or cut accordingly so that each match in the mini batch has histories of the same length. As padding is problematic here, e.g. padding with zeros would mean to add additional draws to the match history, we cut them on the same length for each match, so small batch sizes reduce the amount of cutting needed. The model was trained using the PyTorchs' SGD optimizer with a learning rate of $0.01$ and $0.01$ momentum. Loss curves and validation accuracies for the recurrent model are shown in Figures \ref{fig:rnnloss} and \ref{fig:rnnacc}. This models also starts to overfit after some time, so for evaluation we stopped training after 30 epochs. 
+
+
+
+\begin{figure} 
+\includegraphics[scale=0.28]{img/Siamese3.png}
+\caption{Refining bookmaker odds with our model predictions.}
+\label{fig:oddsref}
+\end{figure}
+
+
+\begin{table}
+\begin{tabular}{|c|c|}
+\hline 
+\textbf{Model} & \textbf{Accuracy} \\ 
+\hline 
+\hline 
+Baseline (Bookmaker) & 0.51 \\ 
+\hline 
+FC Net & 0.49 \\ 
+\hline 
+Recurrent Net & 0.51 \\ 
+\hline 
+Odds Refinement with FC Net & 0.51 \\ 
+\hline 
+Odds Refinement with Recurrent Net & 0.52 \\ 
+\hline 
+\end{tabular} 
+\label{tab:accs}
+\caption{Results for the different models as evaluated on the test set.}
+\end{table}
+
+
+\subsection{Evaluation}
+The results for our models on the test set can be found in Table \ref{tab:accs}, the fully connected network reaches 0.49 testing accuracy and the recurrent model reaches 0.51 accuracy. Also we tested two additional models that use bookmaker data as additional input where we fuse the predictions given by the bookmakers and the predictions given by our models to try to refine the bookmaker predictions (odds refinement in Table \ref{tab:accs}). We combine both predictions in a single layer with Softmax activations, as depicted in \ref{fig:oddsref} and train it with the same hyperparameters as the original models. \\
+One major problem we encountered was that the models basically never predict draws as shown in their confusion matrices in Table \ref{tab:conffc} and \ref{tab:confrnn}, we only saw draw predictions in heavily overfitted models but these perform significantly worse on the other labels. Note that draws were the least common result in our dataset and also bookmakers did not perform better on predicting them than our models, on the test set they also basically never predicted draws (on the whole data set they only predict draws a couple of times), Table \ref{tab:confbm} depicts the confusion matrix of the betting provider \textit{bet365} as evaluated on our test set.
+
+\begin{table}
+\begin{tabular}{|c||c|c|c|}
+\hline 
+ & pred home win & pred draw  & pred away win \\ 
+\hline 
+\hline
+home win & 0.33 & 0.00 & 0.12 \\ 
+\hline 
+draw & 0.16 & 0.00 & 0.10 \\ 
+\hline 
+away win & 0.13 & 0.00 & 0.16 \\ 
+\hline 
+\end{tabular} 
+\caption{Confusion matrix for the fully connected model evaluated on the test set.}
+\label{tab:conffc}
+\end{table}
+
+
+\begin{table}
+\begin{tabular}{|c||c|c|c|}
+\hline 
+ & pred home win & pred draw  & pred away win \\ 
+\hline 
+\hline
+home win & 0.38 & 0.00 & 0.06 \\ 
+\hline 
+draw & 0.20 & 0.00 & 0.06 \\ 
+\hline 
+away win & 0.18 & 0.00 & 0.13 \\ 
+\hline 
+\end{tabular} 
+\caption{Confusion matrix for the recurrent model evaluated on the test set.}
+\label{tab:confrnn}
+\end{table}
+
+
+\begin{table}
+\begin{tabular}{|c||c|c|c|}
+\hline 
+ & pred home win & pred draw  & pred away win \\ 
+\hline 
+\hline
+home win & 0.39 & 0.00 & 0.06 \\ 
+\hline 
+draw & 0.19 & 0.00 & 0.07 \\ 
+\hline 
+away win & 0.16 & 0.00 & 0.13 \\ 
+\hline 
+\end{tabular} 
+\caption{Confusion matrix for the bookmaker BW365 evaluated on the test set.}
+\label{tab:confbm}
+\end{table}
 
 
 
 
 
+
+
+
+\newpage
 \bibliographystyle{IEEEtran}
 \begin{thebibliography}{10}
 \bibitem[1]{ESDB} Hugo Mathien, European Soccer Database (Version 10), Retrieved from https://www.kaggle.com/hugomathien/soccer
+
+\bibitem[2]{Bromley94} Bromley, Jane and Guyon, Isabelle and LeCun, Yann and S{\"a}ckinger, Eduard and Shah, Roopak, Signature verification using a "siamese" time delay neural network, Advances in neural information processing systems, 1994
+
+\bibitem[3]{Schroff15} Schroff, Florian and Kalenichenko, Dmitry and Philbin, James, Facenet: A unified embedding for face recognition and clustering, Proceedings of the IEEE conference on computer vision and pattern recognition, 2015
+
+\bibitem[4]{Dropout14} Nitish Srivastava and Geoffrey Hinton and Alex Krizhevsky and Ilya Sutskever and Ruslan Salakhutdinov, Dropout: A Simple Way to Prevent Neural Networks from Overfitting, Journal of Machine Learning Research, 2014, Volume 15.
+
+\bibitem[5]{LSTM97} Hochreiter, Sepp and Schmidhuber, J\"{u}rgen, Long Short-Term Memory, November 15, 1997, Neural Comput., Volume 9
+
+\bibitem[6]{PyTorch} Paszke, Adam and Gross, Sam and Chintala, Soumith and Chanan, Gregory and Yang, Edward and DeVito, Zachary and Lin, Zeming and Desmaison, Alban and Antiga, Luca and Lerer, Adam, Automatic differentiation in PyTorch, 2017, NIPS-W
+
+\bibitem[7]{Adam} Diederik P. Kingma and Jimmy Ba, Adam: {A} Method for Stochastic Optimization, 2014, CoRR abs/1412.6980, http://arxiv.org/abs/1412.6980, arXiv, 1412.6980
 
 %\bibitem[1]{ES1} Smith, J. O. and Abel, J. S., 
 %``Bark and {ERB} Bilinear Transforms'', 
