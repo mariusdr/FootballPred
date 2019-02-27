@@ -1,61 +1,79 @@
 \relax 
-\citation{1}
-\citation{Bromley94}
-\citation{Schroff15}
-\citation{Dropout14}
+\citation{SVM-Kaggle}
+\citation{DeepLTensor}
+\citation{MLFramework1}
+\citation{MLFramework2}
 \@writefile{toc}{\contentsline {section}{\numberline {1} Introduction}{1}}
 \@writefile{toc}{\contentsline {section}{\numberline {2} Related Work}{1}}
 \newlabel{relatedwork}{{2}{1}}
 \@writefile{toc}{\contentsline {section}{\numberline {3} Data}{1}}
 \newlabel{data}{{3}{1}}
-\@writefile{toc}{\contentsline {section}{\numberline {4} Method}{1}}
-\newlabel{models}{{4}{1}}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces First model for match outcome prediction.}}{1}}
-\newlabel{fig:ffnet}{{1}{1}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1} Fully Connected Model}{1}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2} Match Histories}{1}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1} Structure}{1}}
+\citation{Bromley94}
+\citation{Schroff15}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Tables and their relations in the used SQLite database}}{2}}
+\newlabel{fig:data}{{1}{2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2} Challenges}{2}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1} Incomplete Data}{2}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2} Unbalanced Data}{2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3} Preprocessing}{2}}
+\@writefile{toc}{\contentsline {section}{\numberline {4} Method}{2}}
+\newlabel{models}{{4}{2}}
+\citation{Dropout14}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces First model for match outcome prediction.}}{3}}
+\newlabel{fig:ffnet}{{2}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1} Fully Connected Model}{3}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Feature layers for the FC model.}}{3}}
+\newlabel{tab:flayer}{{1}{3}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Prediction layers for the FC model.}}{3}}
+\newlabel{tab:player}{{2}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2} Match Histories}{3}}
 \citation{LSTM97}
 \citation{PyTorch}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Feature layers for the FC model.}}{2}}
-\newlabel{tab:flayer}{{1}{2}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Prediction layers for the FC model.}}{2}}
-\newlabel{tab:player}{{2}{2}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Second model for match outcome prediction.}}{2}}
-\newlabel{fig:rnn}{{2}{2}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3} RNN Model}{2}}
+\citation{BookmakerEfficiencyPaper}
 \citation{Adam}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Prediction accuracy for different bookmakers in our dataset as evaluated on the test set. Average accuracy for bookmakers is 0.513.}}{3}}
-\newlabel{fig:bmacc}{{3}{3}}
-\@writefile{toc}{\contentsline {section}{\numberline {5} Experiments}{3}}
-\newlabel{experiments}{{5}{3}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1} Setup}{3}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2} Bookmaker Predictions as Baseline}{3}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Training loss for the fully connected model. }}{3}}
-\newlabel{fig:fcloss}{{4}{3}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Validation accuracy for the fully connected model. }}{3}}
-\newlabel{fig:fcacc}{{5}{3}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Training loss for the recurrent model. }}{3}}
-\newlabel{fig:rnnloss}{{6}{3}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Validation accuracy for the recurrent model. }}{4}}
-\newlabel{fig:rnnacc}{{7}{4}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Refining bookmaker odds with our model predictions.}}{4}}
-\newlabel{fig:oddsref}{{8}{4}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3} Training}{4}}
-\newlabel{tab:accs}{{5.3}{4}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Results for the different models as evaluated on the test set.}}{4}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Confusion matrix for the fully connected model evaluated on the test set.}}{4}}
-\newlabel{tab:conffc}{{4}{4}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4} Evaluation}{4}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Confusion matrix for the recurrent model evaluated on the test set.}}{4}}
-\newlabel{tab:confrnn}{{5}{4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Second model for match outcome prediction.}}{4}}
+\newlabel{fig:rnn}{{3}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3} RNN Model}{4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Prediction accuracy for different bookmakers in our dataset as evaluated on the test set. Average accuracy for bookmakers is 0.513.}}{4}}
+\newlabel{fig:bmacc}{{4}{4}}
+\@writefile{toc}{\contentsline {section}{\numberline {5} Experiments}{4}}
+\newlabel{experiments}{{5}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1} Setup}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2} Bookmaker Predictions as Baseline}{4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Training loss for the fully connected model. }}{5}}
+\newlabel{fig:fcloss}{{5}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Validation accuracy for the fully connected model. }}{5}}
+\newlabel{fig:fcacc}{{6}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Training loss for the recurrent model. }}{5}}
+\newlabel{fig:rnnloss}{{7}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Validation accuracy for the recurrent model. }}{5}}
+\newlabel{fig:rnnacc}{{8}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Refining bookmaker odds with our model predictions.}}{5}}
+\newlabel{fig:oddsref}{{9}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3} Training}{5}}
 \bibstyle{IEEEtran}
-\bibcite{ESDB}{1}
-\bibcite{Bromley94}{2}
-\bibcite{Schroff15}{3}
-\bibcite{Dropout14}{4}
-\bibcite{LSTM97}{5}
-\bibcite{PyTorch}{6}
-\bibcite{Adam}{7}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Confusion matrix for the bookmaker BW365 evaluated on the test set.}}{5}}
-\newlabel{tab:confbm}{{6}{5}}
-\@writefile{toc}{\contentsline {section}{\numberline {6} References}{5}}
+\bibdata{report}
+\bibcite{SVM-Kaggle}{1}
+\bibcite{DeepLTensor}{2}
+\bibcite{MLFramework1}{3}
+\bibcite{MLFramework2}{4}
+\bibcite{Bromley94}{5}
+\newlabel{tab:accs}{{5.3}{6}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Results for the different models as evaluated on the test set.}}{6}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Confusion matrix for the fully connected model evaluated on the test set.}}{6}}
+\newlabel{tab:conffc}{{4}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4} Evaluation}{6}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Confusion matrix for the recurrent model evaluated on the test set.}}{6}}
+\newlabel{tab:confrnn}{{5}{6}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Confusion matrix for the bookmaker BW365 evaluated on the test set.}}{6}}
+\newlabel{tab:confbm}{{6}{6}}
+\@writefile{toc}{\contentsline {section}{\numberline {6} Conclusion}{6}}
+\newlabel{conclusion}{{6}{6}}
+\@writefile{toc}{\contentsline {section}{\numberline {7} References}{6}}
+\bibcite{Schroff15}{6}
+\bibcite{Dropout14}{7}
+\bibcite{LSTM97}{8}
+\bibcite{PyTorch}{9}
+\bibcite{BookmakerEfficiencyPaper}{10}
+\bibcite{Adam}{11}

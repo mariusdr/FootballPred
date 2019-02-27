@@ -1,0 +1,58 @@
+This is BibTeX, Version 0.99d (TeX Live 2019/dev/Debian)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: build/report.aux
+The style file: IEEEtran.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Database file #1: report.bib
+-- IEEEtran.bst version 1.11 (2003/04/02) by Michael Shell.
+-- http://www.ctan.org/tex-archive/macros/latex/contrib/supported/IEEEtran/
+-- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
+Warning--empty booktitle in BookmakerEfficiencyPaper
+
+Done.
+You've used 11 entries,
+            3975 wiz_defined-function locations,
+            880 strings with 9271 characters,
+and the built_in function-call counts, 7367 in all, are:
+= -- 588
+> -- 173
+< -- 47
++ -- 92
+- -- 33
+* -- 369
+:= -- 1211
+add.period$ -- 25
+call.type$ -- 11
+change.case$ -- 13
+chr.to.int$ -- 102
+cite$ -- 12
+duplicate$ -- 539
+empty$ -- 598
+format.name$ -- 40
+if$ -- 1638
+int.to.chr$ -- 0
+int.to.str$ -- 11
+missing$ -- 104
+newline$ -- 69
+num.names$ -- 11
+pop$ -- 245
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 2
+skip$ -- 562
+stack$ -- 0
+substring$ -- 251
+swap$ -- 419
+text.length$ -- 13
+text.prefix$ -- 0
+top$ -- 5
+type$ -- 0
+warning$ -- 1
+while$ -- 27
+width$ -- 13
+write$ -- 142
+(There was 1 warning)

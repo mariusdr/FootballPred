@@ -1,0 +1,94 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{#1}
+\csname url@rmstyle\endcsname
+\providecommand{\newblock}{\relax}
+\providecommand{\bibinfo}[2]{#2}
+\providecommand\BIBentrySTDinterwordspacing{\spaceskip=0pt\relax}
+\providecommand\BIBentryALTinterwordstretchfactor{4}
+\providecommand\BIBentryALTinterwordspacing{\spaceskip=\fontdimen2\font plus
+\BIBentryALTinterwordstretchfactor\fontdimen3\font minus
+  \fontdimen4\font\relax}
+\providecommand\BIBforeignlanguage[2]{{%
+\expandafter\ifx\csname l@#1\endcsname\relax
+\typeout{** WARNING: IEEEtran.bst: No hyphenation pattern has been}%
+\typeout{** loaded for the language `#1'. Using the pattern for}%
+\typeout{** the default language instead.}%
+\else
+\language=\csname l@#1\endcsname
+\fi
+#2}}
+
+\bibitem{SVM-Kaggle}
+\BIBentryALTinterwordspacing
+H.~Mathien. {The ultimate Soccer database for data analysis and machine
+  learning}. Accessed on 26. February 2019. [Online]. Available:
+  \url{https://www.kaggle.com/hugomathien/soccer/home}
+\BIBentrySTDinterwordspacing
+
+\bibitem{DeepLTensor}
+\BIBentryALTinterwordspacing
+A.~Carter. {A Beginners Guide to Beating the Bookmakers with TensorFlow}.
+  Accessed on 26. February 2019. [Online]. Available:
+  \url{https://github.com/AndrewCarterUK/football-predictor}
+\BIBentrySTDinterwordspacing
+
+\bibitem{MLFramework1}
+R.~Bunker and F.~Thabtah, ``A machine learning framework for sport result
+  prediction,'' \emph{Applied Computing and Informatics}, vol.~15, 09 2017.
+
+\bibitem{MLFramework2}
+\BIBentryALTinterwordspacing
+A.~C. Constantinou, ``Dolores: a model that predicts football match outcomes
+  from all over the world,'' \emph{Machine Learning}, vol. 108, no.~1, pp.
+  49--75, Jan 2019. [Online]. Available:
+  \url{https://doi.org/10.1007/s10994-018-5703-7}
+\BIBentrySTDinterwordspacing
+
+\bibitem{Bromley94}
+\BIBentryALTinterwordspacing
+J.~Bromley, I.~Guyon, Y.~LeCun, E.~S\"{a}ckinger, and R.~Shah, ``Signature
+  verification using a "siamese" time delay neural network,'' in
+  \emph{Proceedings of the 6th International Conference on Neural Information
+  Processing Systems}, ser. NIPS'93.\hskip 1em plus 0.5em minus 0.4em\relax San
+  Francisco, CA, USA: Morgan Kaufmann Publishers Inc., 1993, pp. 737--744.
+  [Online]. Available: \url{http://dl.acm.org/citation.cfm?id=2987189.2987282}
+\BIBentrySTDinterwordspacing
+
+\bibitem{Schroff15}
+\BIBentryALTinterwordspacing
+F.~Schroff, D.~Kalenichenko, and J.~Philbin, ``Facenet: {A} unified embedding
+  for face recognition and clustering,'' \emph{CoRR}, vol. abs/1503.03832,
+  2015. [Online]. Available: \url{http://arxiv.org/abs/1503.03832}
+\BIBentrySTDinterwordspacing
+
+\bibitem{Dropout14}
+\BIBentryALTinterwordspacing
+N.~Srivastava, G.~Hinton, A.~Krizhevsky, I.~Sutskever, and R.~Salakhutdinov,
+  ``Dropout: A simple way to prevent neural networks from overfitting,''
+  \emph{J. Mach. Learn. Res.}, vol.~15, no.~1, pp. 1929--1958, Jan. 2014.
+  [Online]. Available: \url{http://dl.acm.org/citation.cfm?id=2627435.2670313}
+\BIBentrySTDinterwordspacing
+
+\bibitem{LSTM97}
+\BIBentryALTinterwordspacing
+S.~Hochreiter and J.~Schmidhuber, ``Long short-term memory,'' \emph{Neural
+  Comput.}, vol.~9, no.~8, pp. 1735--1780, Nov. 1997. [Online]. Available:
+  \url{http://dx.doi.org/10.1162/neco.1997.9.8.1735}
+\BIBentrySTDinterwordspacing
+
+\bibitem{PyTorch}
+A.~Paszke, S.~Gross, S.~Chintala, G.~Chanan, E.~Yang, Z.~DeVito, Z.~Lin,
+  A.~Desmaison, L.~Antiga, and A.~Lerer, ``Automatic differentiation in
+  pytorch,'' in \emph{NIPS-W}, 2017.
+
+\bibitem{BookmakerEfficiencyPaper}
+P.~Marek, ``Bookmakers' efficiency in english football leagues,'' 09 2018.
+
+\bibitem{Adam}
+\BIBentryALTinterwordspacing
+D.~P. Kingma and J.~Ba, ``Adam: {A} method for stochastic optimization,''
+  \emph{CoRR}, vol. abs/1412.6980, 2014. [Online]. Available:
+  \url{http://arxiv.org/abs/1412.6980}
+\BIBentrySTDinterwordspacing
+
+\end{thebibliography}

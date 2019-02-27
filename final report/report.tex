@@ -35,12 +35,11 @@ Karlsruhe Institute of Technology}
 \begin{abstract}
 Predicting the outcome of football games is interesting to a lot of people, from
 football enthusiasts to people working in the betting industry. It is also an
-interesting research problem, due to its complexity and difficulty, because even
-humans can not precisely predict the outcome of soccer games. In the Praktikum
+interesting research problem, due to its complexity and difficulty even
+humans can not precisely predict the outcome of soccer games. In the lab
 we used data about past matches, including teams and their players, to train
-different types Neural Networks. We created a simple fully connected Network and
-a bit more complex Network which uses a Long-short-term-memory architecture.
-Afterwards we evaluated them regarding their accuracy and compared the results.
+different types of \textit{Neural Networks}. We created a simple fully connected model and
+a more complex network which uses a \textit{Long-Short-Term Memory} architecture. We evaluated their prediction accuracy and compared them to predictions from various betting services. We found that even relatively simple neural network models can be competitive with professional bookmakers.
 \end{abstract}
 %
 \section{Introduction}
@@ -49,37 +48,36 @@ applied to a wide range of problems in different fields, e.g. in computer
 vision, natural language processing or speech recognition. In this project we
 studied the application of neural networks to a more unusual task, namely to
 predict the outcome of football matches. More precisely, given the data of two
-football teams we had to predict the outcome of a match between them, i.e.
+football teams and their players we had to predict the outcome of a match between them, i.e.
 either predict the winner or predict if the game ends in a draw. \\
-For development we used the \emph{European Soccer Database} \cite{1} which
+For development we used a dataset that 
 contains more than 25.000 professional football matches and statistics for 299
 teams and their associated players collected over multiple seasons from various
 European soccer leagues like the German Bundesliga, the English Premier League
 and the Spanish Primera División. \\
-For this project, we developed two neural network models: A feed-forward model
-and a recurrent neural network (RNN) model. We compare their performance against
+For this project, we developed two neural network models: A fully connected (FC) model
+and a recurrent neural network (RNN) model and compared their performance against
 bookmaker predictions on the same matches. \\
 This report is organized as follows: Section \ref{data} describes the structure
 of our dataset, the features we used as input for our networks and our data
-loading procedure. Section \ref{models} introduces our  models and their
-training procedures. Section \ref{experiments} describes our experimental setup
-and presents our results. We conclude our work in Section \ref{conclusion}.
+loading procedure. Section \ref{models} introduces our  models. Section \ref{experiments} describes our experimental setup
+and presents our results. We conclude this paper in Section \ref{conclusion}.
 
 \section{Related Work} \label{relatedwork}
 There are a lot of existing machine learning approaches which deal with
 predicting football games.
-\\\\
+\\
 The creator of the database used a Support Vector Machine (SVM) to predict the
 football matches. He stated that his approach is able to classify 53\% of the
 matches correctly \cite{SVM-Kaggle}. But it has to be said that there is no
 information about the evaluation process, so the accuracy of around 53\% is not
 confirmed.
-\\\\
+\\
 Andrew Carter presented an approach which uses a Deep Neural Network (DNN) based
 on Tensorflow \cite{DeepLTensor}. He was able to achieve an accuracy of 51\% and
 in addition he developed a betting strategy that can be used in combination with
 his DNN approach.
-\\\\
+\\
 There are plenty of other machine learning projects which address the prediction
 of soccer games \cite{MLFramework1, MLFramework2}. The methods used within these
 projects vary greatly, they used a lot of different evaluation methods and
@@ -90,8 +88,8 @@ The data we used has been published on Kaggle and is called the ``European
 Soccer Database''\footnote{https://www.kaggle.com/hugomathien/soccer/}. As the
 name suggests, it contains information about the outcome of past football games.
 The data is provided as an SQLite database with several tables. The next
-sections introduce the coarse structure of the database and explain which
-challenges arised while dealing with the data.
+sections introduce the coarse structure of the database and explain the
+challenges encountered while dealing with the data.
 
 \begin{figure*}[!htbp]
 	\centering
@@ -115,7 +113,7 @@ players which get better or worse over time. During the preprocessing we select
 the attribute sets with the smallest time difference to the considered match. It
 is important that only attributes are used which are known before the match
 begins.
-\\\\
+\\
 The attributes were extracted from the video game
 FIFA\footnote{https://www.easports.com/de/fifa}.
 Figure \ref{fig:data} shows a simplified view of the tables in the SQLite
@@ -125,8 +123,8 @@ database.
 We encountered two problems during the preprocess tasks. The first problem is
 related to a lot of missing attributes and obviously wrong values. The second
 problem is caused by unbalanced data. The home team statistically wins in 44\%
-of all cases, therefore the database contains much more matches that are labeled
-with a home win in comparision with draws and away wins.
+of all cases, therefore the database contains more matches that are labelled
+with a home win in comparison to draws and away wins.
 \subsubsection{Incomplete Data}
 The three major challenges, due to inaccurate and incomplete data, were:
 \begin{enumerate}
@@ -145,15 +143,15 @@ We tried different approaches for dealing with this inaccuracies and selected
 the ones that worked the best. For missing player IDs we introduced a
 ``default'' player with attributes that are equal to the average of all other
 players in the team. With missing player attributes we dealt in the same way, we
-infered default values.
+inferred default values.
 
 \subsubsection{Unbalanced Data}
 As already mentioned, the home team wins statistically about 44\% of all
 matches. The away team wins 30\% of the matches and the remaining 26\% are
 draws. We do not want to introduce a bias so it was necessary to balance the
-data in the preprocess phase.
-\\\\
-We used \textbf{undersampling} to realize this. That means we removed around
+data in the preprocessing phase.
+\\
+We used \textbf{under sampling} to realize this. That means we removed around
 14\% of the home wins to balance the data. However, in the evaluation phase we
 recognized that the impact of balancing the data is negligible.
 
@@ -162,26 +160,24 @@ Querying the needed the data from the SQLite database on every startup was very
 slow and also introduced the overhead of preprocessing prior to the training.
 Therefore we decided to query the needed data once, preprocess it and write it
 back to a CSV file. The main advantage of this approach is that we do not need
-to run queries against the database before training, which makes the startup
+to run queries against the database before training, which makes the start up
 significantly faster.
-\\\\
+\\
 We split up the data in 80\% Training and 20\% Test. The Training data was
 seperated in 85\% pure Training data and 15\% Validation data. We implemented a
 dataset which conforms to the PyTorch Dataset structure that allows us to use
 existing features of the PyTorch framework (e.g. batching).
 
 \section{Method} \label{models}
-We developed two models that are based on the \textit{Siamese Network} approach
+We developed two models that are roughly based on the \textit{Siamese Network} approach
 \cite{Bromley94} which is extensively used for tasks that require to find
 similarities between two inputs, a recent example for this is \textit{Facenet}
-\cite{Schroff15} a face recognition model. In our case we are given the data of
-two football teams and need to predict the outcome of a match between them,
-basically a comparison task. Teams are represented as a matrix $T \in
+\cite{Schroff15} a face recognition model. The defining characteristic of Siamese models is that a single network learns to embed two inputs consecutively into a feature space while optimizing a distance function, often minimizing the distance between similar and maximizing the distance between dissimilar inputs. In our case we are also given two inputs with varying degrees of similarity between them but instead of computing a distance we need make a classification decision. Therefore we developed models with "two stages", first we embed the input in a way similar to Siamese networks and then we use these embeddings to make a classification decision. \\
+In the following we represent teams as matrices $T \in
 \mathbb{R}^{11 \times m}$ where the row $T_i$ contains the attributes of the
-$i$-th player of a given team. We denote the \textit{away team} with $T^a$ and
-the \textit{home team} with $T^h$. Note that we only consider the eleven
-starting players for each team as we don't have data for substitute players. A
-description of the player attributes is given in Section \ref{data}.
+$i$-th player of this team. Player attributes are as described in Section \ref{data}. In football we distinguish between the \emph{home team}, the team at whose venue the match takes place and the \emph{away team}. We denote the former with $T^h$ and
+the latter with $T^a$. Note that we only consider the eleven
+starting players for each team as we don't have data for substitute players. 
 
 \begin{figure} 
 \includegraphics[scale=0.30]{img/Siamese1.png}
@@ -195,9 +191,9 @@ Figure \ref{fig:ffnet}. The first network learns an embedding $f(T) \in
 \mathbb{R}^d $ for the team data. We use this network for both teams during a
 forward pass, which means that the weights for the inputs are shared during the
 backwards pass. Given the features $f(T^h)$ and $f(T^a)$ for the home and away
-team we use the difference $f(T^h)-f(T^a)$ as the input for the second network,
+team we use the difference $f(T^h)-f(T^a)$ as input for the second network,
 which predicts the probabilities $p_h, p_d, p_a$ for home win, draw and away win
-using the Softmax activation function in the output layer. For the inner layers
+using the Softmax activation function in its output layer. For the inner layers
 we use the ReLU (rectified linear unit) activation function. We also use
 \textit{Dropout} \cite{Dropout14} layers with probability $0.1$ in both
 networks. The layers for the team embedding are depicted in Table
@@ -251,24 +247,23 @@ during the prediction but we first need to extract this from the dataset. \\
 For the performance of a team we consider the goal differences of past matches
 from the teams point of view, e.g. if Team A wins $3$ to $1$ against Team B then
 the goal difference from Team As' point of view is $2$ whereas the difference
-from Team Bs' point of view is $-2$. Thus the goal difference of a draw is $0$
-for both teams. Given a team and a date we call the series of goal differences
+from Team Bs' point of view is $-2$. Thus the goal difference of a draw is $0$ from both points of view. Given a team and a date we call the series of goal differences
 of this teams past matches in this season up to the given date its \textit{match
 history}. For example a team that played three matches with outcomes $3$ to $1$,
 $2$ to $3$ and $0$ to $0$ has the match history $(2, -1, 0)$. Note that we only
-consider games that were played in the same season, we don't go over seasons
+consider games that were played in the same season, we don't go over season
 boundaries as professional football teams often change considerably during the
 off season (buying and selling players, new coaches etc.). We also want to
 emphasise here that match histories have different lengths depending on their
 end date, e.g. at the first matchday of a new season no team has a history yet
 while on the last matchday each team has a full season worth of games in its
 history (in most leagues around $30$ games). Thus the length of the match
-history is variable during the seasons and we need to consider that while
-building our model. \\
-We can construct match histories efficiently using only one pass over our
+history is variable and we need to consider that while
+developing our model. \\
+We can construct histories efficiently using only one pass over our
 dataset if all matches in a season are ordered by their match dates (ordering
 between seasons does not matter). We iterate over the matches by ascending date
-and create a buffer data structure, e.g. a Python deque,  for each 'new' team we
+and create a buffer data structure, e.g. a Python Queue, for each 'new' team we
 encounter, this buffer holds all the row indices of the past matches of its team
 in the dataset. For each match entry we add the current buffer content of both
 teams as a new column. Basically, each match now contains an list of dataset
@@ -284,28 +279,26 @@ be implemented with other frameworks, for example using Pandas DataFrames.
 
 \subsection{RNN Model}
 For our second model we want to use the match histories as additional
-information. As we already described that match histories have different lengths
-at different match dates a recurrent neural networks seems fitting for use as a
-match history encoder. We again use the player data $T^a$ and $T^h$ in the same
-way as in the fully connected model, that is we use the network described in
+information. As we already described that they have different lengths
+at different match dates a recurrent neural networks seems fitting here. We again use the player data $T^a$ and $T^h$ in the same
+way as in the first model, that is we use the network described in
 Table \ref{tab:flayer} to learn embeddings $f(T^a)$, $f(T^h)$ for the away and
 home team and input the difference $f(T^h) - f(T^a)$ into the prediction
 network. For the recurrent neural network we use a LSTM \cite{LSTM97} with one
-hidden layer with $32$ neurons. As a goal difference is a single number we use a
-Linear Layer with shape $1 \times 32$ and Tanh activation before the LSTM. We
-feed the series of goal differences completely into the LSTM and use its last
+hidden layer with $32$ neurons. As a goal difference is a single number we input in a
+Linear Layer with shape $1 \times 32$ and Tanh activation and forward this layers output into the LSTM. We
+feed the series of goal differences entirely into the LSTM and use its last
 hidden state as an additional input for our prediction network. Note that there
 are matches for which the match history is empty, i.e. at the start of a season,
-in these cases we don't use the LSTM at all and only use the predictions from
-the fully connected model.\\
-Similar to the fully connected network we use same LSTM (but reinitialize its
-hidden state after the first team) to encode the match histories of the teams
+in these cases we don't use the recurrent network at all and predict outcomes using only the team embeddings, same as in our first model. \\
+Similar to the fully connected network we use same LSTM to encode the match histories of both teams (of course we reinitialize its
+hidden state for both teams)
 which means that its weights are also shared for both inputs during training. \\
 The input of the prediction network is the difference between the team
 embeddings $f(T^h) - f(T^a)$ concatenated with the last hidden states of the
-LSTMs for both match histories. The prediction network is the same as in the
+LSTM for both match histories (Fig. \ref{fig:rnn}). The prediction network is the same as in the
 first model (Table \ref{tab:player}) but with a larger input size ($192$ instead
-of $128$) in its first layer to account for the additional inputs.
+of $128$) to account for the additional inputs.
 
 \section{Experiments} \label{experiments}
 \subsection{Setup}
@@ -336,13 +329,10 @@ match outcome and in theory there is even an inverse relationship between
 probabilities and odds, $p_x = 1/o_x$, but in practice bookmakers actually
 decrease the odds to add a profit margin for themselves, a process called
 \textit{fixing the odds}. A more thorough review of bookmaker mathematics is out
-of the scope for this document, even though we can still assume that the odds in
-our database reflect which outcome the bookmakers believed to be most likely, as
-they would probably still assure that this one is the most "unattractive" to bet
-on. \\
-For these reasons we use the predictions given by the odds as baseline to
-compare our models against. We evaluated their predictions on the matches in our
-test set using an ensemble of nine different bookmakers. Their results are shown
+of the scope for this report, even though we can still assume that the odds in
+our database reflect the outcomes the bookmakers believed to be most likely, as profit margins are often relatively low \cite{BookmakerEfficiencyPaper}. For these reasons we use the predictions given by the odds as baseline to
+compare our models against. We evaluated them on the matches in our
+test set for nine different bookmakers and measured their accuracies. Results are shown
 in Figure \ref{fig:bmacc}, the mean prediction accuracy is 0.513.
 
 \begin{figure} 
@@ -373,9 +363,9 @@ in Figure \ref{fig:bmacc}, the mean prediction accuracy is 0.513.
 We train both of our models with the cross entropy loss function. Our fully
 connected model was trained with the Adam \cite{Adam} optimizer with a learning
 rate of $0.0025$ and a batch size of $1024$. The training loss and validation
-accuracies for this models are shown in Figure \ref{fig:fcloss} and
-\ref{fig:fcacc}. We see that this models tends to overfit quickly even with
-small learning rates so we only trained it for five epochs for our evaluation.
+accuracies are shown in Figure \ref{fig:fcloss} and
+\ref{fig:fcacc}. We see that this model tends to overfit quickly even with
+small learning rates so we only trained it for five epochs for evaluation.
 \\
 For our recurrent model we only batch sizes of $32$ matches as the variable
 length match histories we consider here have to either be padded or cut
@@ -426,7 +416,7 @@ bookmaker data as additional input where we fuse the predictions given by the
 bookmakers and the predictions given by our models to try to refine the
 bookmaker predictions (odds refinement in Table \ref{tab:accs}). We combine both
 predictions in a single layer with Softmax activations, as depicted in
-\ref{fig:oddsref} and train it with the same hyperparameters as the original
+\ref{fig:oddsref} and train it with the same hyper-parameters as the original
 models. \\
 One major problem we encountered was that the models basically never predict
 draws as shown in their confusion matrices in Table \ref{tab:conffc} and
@@ -493,25 +483,24 @@ away win & 0.16 & 0.00 & 0.13 \\
 
 \FloatBarrier
 
-\section{Conclusion}
-\label{conclusion}
-Prediciting football games is a very popular and challenging task. People
-already tried to apply a broad range of different machine learning algorithms
+\section{Conclusion} \label{conclusion}
+Predicting football games is a very popular and challenging task. Different authors and practitioners
+already applied a broad range of different machine learning algorithms
 and techniques to accurately predict the outcome of upcoming football games.
 Even for humans it is very hard to predict whether the home team wins, the away
 team wins or the game ends with a draw. The accuracy of humans and machine
-learning approaches show that there are much more factors which have an impact
+learning approaches show that there are many more factors which have an impact
 on the outcome of a football game. Maybe in-depth data-collection and
 data-engineering can improve the prediction accuracy, sometimes it might even be
 \textit{luck} if a team wins or loses.
-\\\\
+\\
 It is indisputable that there will be a lot of contributions in the context of
-predicting football games in the future. A lot of people are fascinated by
-sports and the betting industry generates high profits. For that reason there
+predicting sport results in the future. A lot of people are fascinated by
+sports and the betting industry always strives for higher profits. For that reason there
 will always be interest in this topic. It remains to be seen if new machine
-learning approaches and more data are able to boost the performance of
-computer-based prediction further and if neural networks are able to beat the
-accuracy of human predictions permanently.
+learning approaches are able to boost the performance of
+computer-based predictions further and if they are able to beat
+human experts consistently.
 
 \bibliographystyle{IEEEtran}
 \bibliography{report}
